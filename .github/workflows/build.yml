@@ -80,6 +80,7 @@ jobs:
         with:
           name: kuon-build
           path: |
+            build/SLES_534.11
             build/SLES_534.11.elf
             build/SLES_534.11.map
             docs/functions.csv
