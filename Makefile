@@ -33,10 +33,11 @@ C_O        := $(patsubst %.c,$(BUILD)/%.o,$(C_FILES))
 
 ELF := $(BUILD)/$(BASENAME).elf
 ROM := $(BUILD)/$(BASENAME).rom
+EXE := $(BUILD)/$(BASENAME)
 
 .PHONY: all check clean split setup progress
 
-all: check
+all: check $(EXE)
 
 $(BUILD)/%.o: %.s
 	@mkdir -p $(dir $@)
@@ -55,6 +56,10 @@ $(ELF): $(GAME_ASM_O) $(C_O) $(BUILD)/kuon.ld
 
 $(ROM): $(ELF)
 	@$(OBJCOPY) -O binary --gap-fill=0x00 $< $@
+
+# Bootable executable: the rebuilt image inside the retail ELF headers
+$(EXE): $(ROM) tools/make_exe.py
+	@$(PYTHON) tools/make_exe.py
 
 check: $(ROM)
 	@sha1sum -c checksum.sha1 && echo "OK: build matches retail SLES_534.11"
