@@ -26,6 +26,7 @@ if command -v apt-get >/dev/null; then sudo apt-get install -y python3-venv; fi
 python3 -m venv .venv
 .venv/bin/pip install -q --upgrade pip setuptools wheel
 .venv/bin/pip install -q "splat64[mips]==0.50.1" "spimdisasm==1.42.4"
+.venv/bin/pip install -q "git+https://github.com/matt-kempster/m2c.git"
 
 echo "== wibo (runs the Windows compiler on Linux)"
 mkdir -p tools/compilers
