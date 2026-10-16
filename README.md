@@ -38,6 +38,13 @@ IOP modules loaded from disc include FromSoftware's own sound drivers (`fssd.irx
 That installs MIPS binutils and splat, downloads `wibo` and the CodeWarrior compiler,
 splits the executable, builds it, and checks it matches.
 
+### GitHub Actions
+
+`.github/workflows/build.yml` runs the same steps on every push and pull request
+(and on demand from the Actions tab). The job fails if the rebuilt image doesn't match
+retail. The ELF, linker map and `docs/functions.csv` are uploaded as the `kuon-build`
+artifact, and the progress numbers show up in the run summary.
+
 ## Working on it
 
 ```
