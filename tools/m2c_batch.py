@@ -48,10 +48,36 @@ def num(s):
     return int(s, 0)
 
 
-def run_m2c(name, opts):
-    ctx = ["--context", str(CTX)] if CTX.exists() else []
+TAIL = re.compile(r"^(\s+/\*[^*]*\*/\s+j\s+func_\w+\n)(\s+/\*[^*]*\*/\s+[^\n]*\n)", re.M)
+
+
+JR = re.compile(r"^(\s+/\*[^*]*\*/\s+)jr(\s+)(\$(?!ra\b)\w+)\n(\s+/\*[^*]*\*/\s+[^\n]*\n)", re.M)
+
+
+def prep_asm(name):
+    """Copy of the function's asm with each tail call's delay slot moved before the `j`.
+
+    m2c ignores the delay slot of a `j` to a function, so arguments set up there were lost.
+    The delay slot runs before the callee anyway, so swapping is equivalent. The same goes for
+    `jr $reg` tail calls through a function pointer, which m2c would take for a jump table.
+
+    Registers 8-11 are $t0-$t3 in splat's (o32) names but $a4-$a7 in m2c's EE (EABI) names,
+    where they carry arguments 5-8, so they are renamed."""
+    out = ROOT / "build" / "m2c" / "asm" / f"{name}.s"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    src = (ROOT / "asm" / "game" / f"{name}.s").read_text()
+    src = re.sub(r"\$t([0-3])\b", lambda m: f"$a{int(m[1]) + 4}", src)
+    if "jtbl" not in src:
+        # without a jump table, `jr $reg` is a tail call through a function pointer
+        src = JR.sub(lambda m: m[4] + f"{m[1]}jalr{m[2]}{m[3]}\n    nop\n    jr $ra\n    nop\n", src)
+    out.write_text(TAIL.sub(lambda m: m[2] + m[1].rstrip("\n") + "\n" + "    nop\n", src))
+    return out
+
+
+def run_m2c(name, opts, ctx=True):
+    ctx = ["--context", str(CTX)] if ctx and CTX.exists() else []
     r = subprocess.run([PY, "-m", "m2c.main", "-t", "mipsee-mwcc-c", "--valid-syntax", *ctx, *opts,
-                        f"asm/game/{name}.s"], cwd=ROOT, capture_output=True, text=True)
+                        str(prep_asm(name))], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
         return None
     return r.stdout
@@ -92,6 +118,9 @@ def load_sigs():
 
 def add_protos(src, name, sigs):
     """Declare callees that m2c took from the context (it doesn't print those)."""
+    # functions used by address come out as `extern T func_X;`: declare them as functions
+    src = re.sub(r"^extern [\w \*]+? (func_[0-9A-F]{8});\n",
+                 lambda m: (sigs.get(m[1], f"void {m[1]}();")) + "\n", src, flags=re.M)
     head, sep, body = src.partition(f"{name}(")
     declared = set(re.findall(r"\b(func_[0-9A-F]{8})\(", head))
     used = sorted(set(re.findall(r"\b(func_[0-9A-F]{8})\b", body)) - declared - {name})
@@ -116,9 +145,7 @@ def gather(jobs):
     todo = [n for n in order if n not in sigs]
 
     def one(n):
-        r = subprocess.run([PY, "-m", "m2c.main", "-t", "mipsee-mwcc-c", "--valid-syntax",
-                            f"asm/game/{n}.s"], cwd=ROOT, capture_output=True, text=True)
-        m = re.search(rf"^(.*?)\s*\b{n}\(([^)]*)\)\s*\{{", r.stdout, re.M)
+        m = re.search(rf"^(.*?)\s*\b{n}\(([^)]*)\)\s*\{{", run_m2c(n, [], ctx=False) or "", re.M)
         if not m:
             return n, f"void {n}();"
         ret = m[1].replace("M2C_UNK", "s32").strip()
@@ -130,6 +157,11 @@ def gather(jobs):
     with ThreadPoolExecutor(jobs) as ex:
         for n, proto in ex.map(one, todo):
             sigs[n] = proto
+    # SDK/runtime prototypes known so far live in common.h
+    for ret, n, params in re.findall(r"^(\w[\w \*]*?)\s*\b(func_[0-9A-F]{8})\(([^)]*)\);",
+                                     (ROOT / "include" / "common.h").read_text(), re.M):
+        sigs[n] = f"{ret.strip()} {n}({params});"
+        order.append(n)
     CTX.parent.mkdir(parents=True, exist_ok=True)
     SIGS.write_text("".join(f"{n} {sigs[n]}\n" for n in order if n in sigs))
     CTX.write_text(CTX_TYPES + "".join(sigs[n] + "\n" for n in order if n in sigs))
