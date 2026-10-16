@@ -233,15 +233,18 @@ def render(name, src):
 
 
 def check(name, text):
-    path = ROOT / "src" / "game" / f"{name}.c"
-    path.write_text(text)
-    r = subprocess.run([PY, "tools/diff.py", "-q", name], cwd=ROOT, capture_output=True, text=True)
+    """Test a draft under build/m2c/try/; only an exact match is written to src/game/."""
+    trial = ROOT / "build" / "m2c" / "try" / f"{name}.c"
+    trial.parent.mkdir(parents=True, exist_ok=True)
+    trial.write_text(text)
+    r = subprocess.run([PY, "tools/diff.py", "-q", "--file", str(trial), name], cwd=ROOT,
+                       capture_output=True, text=True)
     if r.returncode == 0:
         c = subprocess.run([PY, "tools/check_obj.py", f"build/diff/{name}.o"], cwd=ROOT,
                            capture_output=True, text=True)
         if c.returncode == 0:
+            (ROOT / "src" / "game" / f"{name}.c").write_text(text)
             return True
-    path.unlink()
     return False
 
 
