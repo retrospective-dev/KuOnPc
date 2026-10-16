@@ -5,6 +5,8 @@ For each candidate, m2c (--valid-syntax, CodeWarrior EE target) is run with a fe
 sets. Each draft is turned into repo style (raw field accesses become per-function struct
 typedefs where possible), written to src/game/, compiled, checked with tools/check_obj.py
 and byte-compared with tools/diff.py. Only exact matches are kept, so it is safe to re-run.
+The closest draft of each failure goes to build/m2c/best/ and build/m2c/report.txt lists them,
+fewest differing instructions first.
 
 Callee signatures come from build/m2c/ctx.h, made by `--gather`: m2c's reading of every
 game function's own parameters, plus the definitions already in src/game/. Re-gather after
@@ -244,12 +246,18 @@ def check(name, text):
                            capture_output=True, text=True)
         if c.returncode == 0:
             (ROOT / "src" / "game" / f"{name}.c").write_text(text)
-            return True
-    return False
+            return 0
+        return "emits data"
+    m = re.search(r"(\d+) of (\d+) differ", r.stdout)
+    return int(m[1]) if m else "compile error"
 
 
 def attempt(name, sigs):
+    """Return (name, how) on a match, else (name, None, best) where best is the closest draft
+    as (differing instructions or failure reason, text). The closest draft is kept in
+    build/m2c/best/ for hand work."""
     seen = set()
+    best = ("no usable m2c output", None)
     for opts in VARIANTS:
         raw = run_m2c(name, opts)
         if raw is None:
@@ -264,9 +272,18 @@ def attempt(name, sigs):
             if text in seen:
                 continue
             seen.add(text)
-            if check(name, text):
-                return name, " ".join(opts) or "default"
-    return name, None
+            res = check(name, text)
+            if res == 0:
+                return name, " ".join(opts) or "default", None
+            if isinstance(res, int) and (not isinstance(best[0], int) or res < best[0]):
+                best = (res, text)
+            elif not isinstance(best[0], int):
+                best = (res, text)
+    if best[1]:
+        out = ROOT / "build" / "m2c" / "best" / f"{name}.c"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(best[1])
+    return name, None, best[0]
 
 
 def main():
@@ -298,12 +315,18 @@ def main():
     # build the shared symbol script once before going parallel
     subprocess.run([PY, "tools/diff.py", "-q", "func_0012E740"], cwd=ROOT, capture_output=True)
     matched = 0
+    report = []
     with ThreadPoolExecutor(a.jobs) as ex:
-        for name, how in ex.map(lambda n: attempt(n, sigs), todo):
+        for name, how, best in ex.map(lambda n: attempt(n, sigs), todo):
             if how:
                 matched += 1
                 print(f"MATCH {name} ({how})", flush=True)
-    print(f"m2c batch: {matched} / {len(todo)} matched")
+            else:
+                report.append((name, best))
+    # near-miss list: fewest differing instructions first
+    report.sort(key=lambda r: (not isinstance(r[1], int), r[1] if isinstance(r[1], int) else 0, r[0]))
+    (ROOT / "build" / "m2c" / "report.txt").write_text("".join(f"{n} {b}\n" for n, b in report))
+    print(f"m2c batch: {matched} / {len(todo)} matched; near misses in build/m2c/report.txt")
 
 
 if __name__ == "__main__":

@@ -53,5 +53,26 @@ ROM/ELF outputs or the compiler (see `.gitignore`).
 
 ## Open matching problems
 
+### Branch-target `nop` padding (blocks ~620 functions)
+
+In the retail code, about 91% of branch targets sit on 8-byte-aligned addresses, often with a
+`nop` inserted before the target to get there, e.g. the end of an `if` body before the epilogue:
+
+```
+sw   $v1, %gp_rel(D_0025E31C)($gp)
+nop                         <- padding; our compile has no nop here
+.L0013A4F8:
+ld   $ra, 0x0($sp)
+```
+
+622 functions have a `nop` right before an `ld $ra` branch target; none match yet. Targets of an
+unconditional `b` are often *not* aligned. Already ruled out (2026-10-16, test case
+`func_0013A4C0`): compilers mwcps2 2.4-001213, 3.0b52-030722, 3.0.1b74-030811, 3.0.3-020716;
+flags -O0..-O4 with `,p`/`,s`, `-g`, `-opt nopeep`, `-inline off`, C++ mode; source forms
+(goto/early return/else/do-while/switch/inline helpers). Not tried yet: getting `-S` assembly
+output (the driver needs `mwldps2.exe` on its path) to see whether the compiler marks labels for
+alignment, and later CodeWarrior PS2 releases (3.5+, 2003-2004) that decomp.me doesn't have.
+`tools/diff.py` takes `KUON_MWCC=<compiler dir>` and `KUON_CFLAGS="..."` for such experiments.
+
 - `src/wip/func_00150830.c`: `x == 10 || x == 11` returning 1/0. CW emits branch-to-branch
   (`beq` to a `b` with `li v0,1` in the delay slot); none of the obvious forms reproduce it.
