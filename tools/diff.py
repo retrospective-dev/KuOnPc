@@ -72,8 +72,13 @@ def symbols_ld(exclude):
             p = l.split()
             if len(p) == 3 and re.match(r"^[A-Za-z_.$][\w.$]*$", p[2]):
                 lines.append((p[2], p[0]))
+        if not lines:
+            sys.exit("no symbols read from build/SLES_534.11.elf - is `make` running?")
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text("".join(f"{n} = 0x{a};\n" for n, a in lines))
+        # write atomically: parallel diffs (tools/m2c_batch.py) read this file
+        tmp = out.with_suffix(f".{os.getpid()}.tmp")
+        tmp.write_text("".join(f"{n} = 0x{a};\n" for n, a in lines))
+        os.replace(tmp, out)
         stamp.write_text("")
     text = out.read_text()
     filt = ROOT / "build" / "diff" / f"syms_{exclude}.ld"
