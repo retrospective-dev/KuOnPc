@@ -1,0 +1,70 @@
+name: Kuon (PAL, SLES-53411)
+sha1: 57c0db8cd2a35a6818e60c6557a35ea4ebbf1be7
+options:
+  basename: SLES_534.11
+  target_path: SLES_534.11.rom
+  elf_path: build/SLES_534.11.elf
+  base_path: .
+  platform: ps2
+  compiler: MWCCPS2
+
+  gp_value: 0x00265F70
+
+  asm_path: asm
+  src_path: src
+  build_path: build
+
+  ld_script_path: SLES_534.11.ld
+  ld_dependencies: True
+  ld_wildcard_sections: True
+  ld_bss_contains_common: True
+
+  create_asm_dependencies: True
+  find_file_boundaries: True
+  o_as_suffix: True
+
+  symbol_addrs_path:
+    - symbol_addrs.txt
+  reloc_addrs_path:
+    - reloc_addrs.txt
+
+  undefined_funcs_auto_path: undefined_funcs_auto.txt
+  undefined_syms_auto_path: undefined_syms_auto.txt
+
+  string_encoding: ASCII
+  data_string_encoding: ASCII
+  rodata_string_guesser_level: 2
+  data_string_guesser_level: 2
+
+  named_regs_for_c_funcs: False
+  migrate_rodata_to_functions: False
+  disasm_unknown: True
+
+  section_order:
+    - .text
+    - .data
+    - .rodata
+    - .sdata
+    - .sbss
+    - .bss
+
+segments:
+  - name: main
+    type: code
+    start: 0x000000
+    vram: 0x00100000
+    bss_size: 0x80C700
+    subalign: null
+    subsegments:
+      # crt0 + Sony PS2 SDK 2.8.0 libraries + Metrowerks MSL C runtime
+      - [0x000000, asm, sdk]
+      # FromSoftware game code (CodeWarrior 3.0.x, -O4 -sdatathreshold 0)
+      - [0x02E4B0, asm, game]
+      # VU1 microcode (25 VIF MPG uploads) - FromSoftware render pipeline
+      - [0x121410, data, vu1_microcode]
+      # Kernel-mode SDK patch code (runs at 0x8007xxxx)
+      - [0x129920, data, kernel_patch]
+      # data / rodata / sdata
+      - [0x12AE50, data, data]
+      - { start: 0x15E300, type: bss, vram: 0x0025E300 }
+  - [0x15E300]
