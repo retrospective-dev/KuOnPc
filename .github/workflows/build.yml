@@ -15,11 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify original executable
+      - name: Get original executable
+        env:
+          KUON_ELF_URL: ${{ secrets.KUON_ELF_URL }}
         run: |
           if [ ! -f original/SLES_534.11 ]; then
-            echo "::error::original/SLES_534.11 is missing"
-            exit 1
+            if [ -z "$KUON_ELF_URL" ]; then
+              echo "::error::original/SLES_534.11 is missing and the KUON_ELF_URL secret is not set"
+              exit 1
+            fi
+            curl -sSfL -o original/SLES_534.11 "$KUON_ELF_URL"
           fi
           echo "bd495fc0bb5b905b2459ac2441622d19c33bad42  original/SLES_534.11" | sha1sum -c
 
@@ -75,12 +80,10 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload build
+      - name: Upload map and function list
         uses: actions/upload-artifact@v4
         with:
-          name: kuon-build
+          name: kuon-map
           path: |
-            build/SLES_534.11
-            build/SLES_534.11.elf
             build/SLES_534.11.map
             docs/functions.csv

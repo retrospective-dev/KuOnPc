@@ -42,16 +42,19 @@ splits the executable, builds it, and checks it matches.
 
 `.github/workflows/build.yml` runs the same steps on every push and pull request
 (and on demand from the Actions tab). The job fails if the rebuilt image doesn't match
-retail. The bootable `SLES_534.11`, the linker ELF and map, and `docs/functions.csv` are
-uploaded as the `kuon-build` artifact, and the progress numbers show up in the run summary.
+retail. The linker map and `docs/functions.csv` are uploaded as the `kuon-map` artifact
+(no executables: they're Sony/FromSoftware code), and the progress numbers show up in the
+run summary.
+
+CI needs the retail executable. It uses `original/SLES_534.11` if present, otherwise it
+downloads it from the URL in the `KUON_ELF_URL` repository secret (a private link you control).
 
 ### Testing the output
 
 `make` writes `build/SLES_534.11`: the rebuilt code inside the retail executable's ELF
 headers. While the build matches, it is identical to the file on the disc.
 
-- **PCSX2:** System → Start File, pick `build/SLES_534.11` (or the one from the
-  `kuon-build` artifact). The game reads its data from the disc, so keep your Kuon ISO
+- **PCSX2:** System → Start File, pick `build/SLES_534.11`. The game reads its data from the disc, so keep your Kuon ISO
   loaded: set it under Settings → Game List or System → Start Disc first.
 - **Replace it in the ISO:** swap `SLES_534.11` in a copy of your ISO with an ISO editor
   (e.g. ImgBurn / UltraISO) and boot the ISO as usual.
@@ -66,7 +69,7 @@ make                                     # full rebuild, must print OK
 make progress
 ```
 
-See `CLAUDE.md` for the matching rules learned so far and the agent workflow.
+See `SPEC.md` for the project plan and `CLAUDE.md` for the matching rules and agent workflow.
 
 ## Layout
 
