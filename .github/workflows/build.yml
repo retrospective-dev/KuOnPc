@@ -1,0 +1,85 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  MWCC_VER: mwcps2-3.0.3-020716
+  WIBO_VER: "0.7.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify original executable
+        run: |
+          if [ ! -f original/SLES_534.11 ]; then
+            echo "::error::original/SLES_534.11 is missing"
+            exit 1
+          fi
+          echo "bd495fc0bb5b905b2459ac2441622d19c33bad42  original/SLES_534.11" | sha1sum -c
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils-mips-linux-gnu
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python packages
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -q --upgrade pip
+          .venv/bin/pip install -q "splat64[mips]==0.50.1" "spimdisasm==1.42.4"
+
+      - name: Cache compiler and wibo
+        id: cache-tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/wibo
+            tools/compilers
+          key: tools-wibo-${{ env.WIBO_VER }}-${{ env.MWCC_VER }}
+
+      - name: Download compiler and wibo
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: |
+          curl -sSfL -o tools/wibo https://github.com/decompals/wibo/releases/download/$WIBO_VER/wibo
+          chmod +x tools/wibo
+          mkdir -p tools/compilers/$MWCC_VER
+          curl -sSfL https://github.com/decompme/compilers/releases/download/compilers/$MWCC_VER.tar.gz \
+            | tar xz -C tools/compilers/$MWCC_VER
+
+      - name: Split
+        run: |
+          make setup
+          make split
+
+      - name: Build and verify checksum
+        run: make -j"$(nproc)"
+
+      - name: Progress
+        run: |
+          .venv/bin/python tools/inventory.py
+          .venv/bin/python tools/progress.py | tee progress.txt
+          {
+            echo '### Progress'
+            echo '```'
+            cat progress.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: kuon-build
+          path: |
+            build/SLES_534.11.elf
+            build/SLES_534.11.map
+            docs/functions.csv
