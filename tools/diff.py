@@ -10,6 +10,7 @@ current full build (build/SLES_534.11.elf), so `D_006B90D0 + 0x148` and `D_006B9
 resolve to the same address and only real differences are reported.
 """
 import argparse
+import os
 import re
 import struct
 import subprocess
@@ -20,8 +21,11 @@ ROOT = Path(__file__).resolve().parent.parent
 ROM = ROOT / "SLES_534.11.rom"
 ELF = ROOT / "build" / "SLES_534.11.elf"
 VRAM = 0x100000
-MWCC_VER = "mwcps2-3.0.3-020716"
+MWCC_VER = os.environ.get("KUON_MWCC", "mwcps2-3.0.3-020716")
 CFLAGS = ["-c", "-O4", "-nostdinc", "-Iinclude"]
+# for experiments: KUON_CFLAGS="-O3 -opt nopeephole" replaces -O4
+if os.environ.get("KUON_CFLAGS"):
+    CFLAGS = ["-c", *os.environ["KUON_CFLAGS"].split(), "-nostdinc", "-Iinclude"]
 CROSS = "mips-linux-gnu-"
 
 TTY = sys.stdout.isatty()
