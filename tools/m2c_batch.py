@@ -315,11 +315,50 @@ def structify(name, src):
     return "\n".join(defs) + "\n" + out
 
 
+def typed_locals(src, name):
+    """Give m2c's register-named temporaries the types the prototype's debug info lists for
+    the locals in those registers, and turn raw field accesses on struct pointers into
+    named fields."""
+    import json
+    if "locals" not in _SIG_CACHE:
+        lp, fp = PROTO_DIR / "proto_locals.json", PROTO_DIR / "proto_fields.json"
+        _SIG_CACHE["locals"] = json.loads(lp.read_text()) if lp.exists() else {}
+        _SIG_CACHE["fields"] = json.loads(fp.read_text()) if fp.exists() else {}
+    regs, fields = _SIG_CACHE["locals"].get(name), _SIG_CACHE["fields"]
+    if not regs:
+        return src
+    structs = {}
+
+    def retype(m):
+        var, reg = m[3], m[4]
+        t = regs.get(reg)
+        # registers get reused: only retype when pointer-ness agrees
+        if not t or ("*" in m[2]) != ("*" in t):
+            return m[0]
+        sm = re.fullmatch(r"(\w+) \*@", t)
+        if sm and sm[1] in fields:
+            structs[var] = fields[sm[1]]
+        return f"{m[1]}{t.replace('@', var)};"
+    src = re.sub(r"^(\s+)([\w ]+[ *]+)((?:temp|var)_([a-z]\w?\d?)(?:_\d+)?);$", retype, src, flags=re.M)
+
+    def field(m):
+        f = structs.get(m[1], {}).get(str(int(m[3], 0)))
+        return f"{m[1]}->{f}" if f else m[0]
+    src = re.sub(r"M2C_FIELD\((\w+), ([\w ]+? \*+), (0x[0-9A-Fa-f]+|\d+)\)", field, src)
+    # m2c's arithmetic on these pointers is in bytes
+    for v in structs:
+        src = re.sub(rf"(?<![\w>.]){v}(?= [+-] )", f"(u8 *){v}", src)
+        src = re.sub(rf"(?<=[+-] ){v}\b(?!->)", f"(u8 *){v}", src)
+    return src
+
+
 def render(name, src):
     """Yield candidate C files for one m2c draft (struct form first, then raw macro form)."""
     s = structify(name, src)
-    for fix in (lambda x: x, byte_pointers, lambda x: stack_arrays(x, name),
-                lambda x: stack_arrays(byte_pointers(x), name)):
+    fixes = [lambda x: x, byte_pointers, lambda x: stack_arrays(x, name),
+             lambda x: stack_arrays(byte_pointers(x), name)]
+    fixes += [lambda x, f=f: typed_locals(f(x), name) for f in list(fixes)]
+    for fix in fixes:
         inc = '#include "common.h"\n' + ('#include "kuon_types.h"\n' if proto_info()[0] else "")
         if s is not None:
             yield inc + "\n" + fix(bytes_ptr(s)).strip() + "\n"

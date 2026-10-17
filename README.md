@@ -123,6 +123,7 @@ decisions are logged in [`docs/decisions.md`](docs/decisions.md).
 | **Target** | PAL `SLES_534.11` v1.01, Kuon (SLES-53411) |
 | **Compiler** | Metrowerks CodeWarrior for PS2, front end "MW MIPS C Compiler 2.4.1.01", `-O4`. The exact build isn't available, so its branch-target padding is emulated |
 | **SDK** | Sony PS2 SDK 2.8.0 |
+| **Prototype** | The unstripped US prototype of 2 August 2004 supplies original function names, source file layout, struct definitions and types (see `CONTRIBUTING.md`) |
 
 ### What's in the executable
 

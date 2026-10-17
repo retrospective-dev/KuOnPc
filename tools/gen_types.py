@@ -214,6 +214,39 @@ def main():
     plain = re.sub(r"(?<!long )\blong\b(?! long)", "long long", plain)
     ctx.write_text(dwarf1_types_prelude() + plain + "\n" + "\n".join(sorted(set(protos))) + "\n"
                    + "\n".join(externs) + "\n")
+    # locals by register (m2c names its temporaries after registers) and struct fields
+    import json
+    locs = {}
+    for d in dies.values():
+        if d.tag in ("global_subroutine", "subroutine") and d.name in proto_name:
+            regs = {}
+
+            def walk(node):
+                for c in node.children:
+                    if c.tag == "local_variable":
+                        loc = dwarf1.Printer.location(c)
+                        if re.fullmatch(r"[a-z]\w?\d?", loc) and loc in dwarf1.REGS:
+                            regs.setdefault(loc, re.sub(r"\b[us]128 ", "u128_t ", pr.typename(c, "@")))
+                    elif c.tag == "lexical_block":
+                        walk(c)
+            walk(d)
+            for r in proto_name[d.name]:
+                locs[r] = regs
+    fields = {}
+    for k, t in reps.items():
+        if t.tag == "enumeration_type":
+            continue
+        f = {}
+        for m in t.children:
+            if m.tag == "member" and "bit_size" not in m.attrs:
+                off = dwarf1.Printer.location(m).replace("add", "").strip()
+                try:
+                    f.setdefault(str(int(off, 16)), m.name)
+                except ValueError:
+                    pass
+        fields[names[k]] = f
+    (ctx.parent / "proto_locals.json").write_text(json.dumps(locs))
+    (ctx.parent / "proto_fields.json").write_text(json.dumps(fields))
     # pieces for tools/m2c_batch.py, which builds a context per function
     (ctx.parent / "proto_types.h").write_text(plain + "\n")
     (ctx.parent / "proto_protos.txt").write_text(

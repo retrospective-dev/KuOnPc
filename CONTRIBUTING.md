@@ -21,6 +21,28 @@ make progress
 `original/SLES_534.11` (sha1 `bd495fc0…`) must be present. Never commit `asm/`, `build/`,
 ROM/ELF outputs or the compiler (see `.gitignore`).
 
+## The August 2004 prototype
+
+The US prototype dated 2 August 2004 (`SLUS_210.07`, from the "Kuon (Aug 2, 2004 prototype)"
+disc image) is an unstripped debug build from the same compiler front end. Put the executable
+in `disc/proto/SLUS_210.07` (git-ignored; never commit it). Then:
+
+```
+python3 tools/proto_match.py    # build/proto/map.txt: retail func_ -> original function name
+python3 tools/proto_data.py     # build/proto/data_map.txt: retail D_ -> original global (+offset)
+python3 tools/dwarf1.py disc/proto/SLUS_210.07    # build/proto/dwarf/<file>.c.txt: per-file dump
+python3 tools/gen_types.py      # include/kuon_types.h + m2c context (types, prototypes, globals, locals)
+```
+
+What it gives: 2,725 of 2,909 retail functions named, their original source files (209, under
+`C:\cs4\Seimei\`), 2,503 typed signatures, 560 distinct struct/union/enum layouts with field
+names, typed globals and each function's locals with their registers. CodeWarrior recorded no
+typedef names, so `gen_types.py` names each struct after the variables that use it.
+
+`tools/m2c_batch.py` uses all of this automatically when `build/m2c/proto_*.h|txt|json` exist.
+When decompiling by hand, read the function's entry in `build/proto/dwarf/` first: it has the
+real parameter and local names and types.
+
 ## Matching workflow
 
 1. `python3 tools/todo.py --bucket tiny` lists the easiest unmatched integer functions.
