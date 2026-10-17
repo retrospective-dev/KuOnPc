@@ -1,5 +1,9 @@
 # Working on the Kuon decompilation
 
+**Starting a fresh session:** `bash tools/setup.sh`, then `bash tools/get_proto.sh`, then carry on
+with the matching workflow below (`tools/m2c_batch.py --allow-float`, `tools/typefix.py`,
+`tools/permute_batch.py`, and `tools/push_progress.sh "message"` to verify, update the README and push).
+
 Read `SPEC.md` first: it has the goal (native PC port), the phases and the hard rules.
 This file is the hands-on part: how to build, how to match, and what has been learned.
 
@@ -25,7 +29,8 @@ ROM/ELF outputs or the compiler (see `.gitignore`).
 
 The US prototype dated 2 August 2004 (`SLUS_210.07`, from the "Kuon (Aug 2, 2004 prototype)"
 disc image) is an unstripped debug build from the same compiler front end. Put the executable
-in `disc/proto/SLUS_210.07` (git-ignored; never commit it). Then:
+in `disc/proto/SLUS_210.07` (git-ignored; never commit it). `tools/get_proto.sh` downloads it from
+archive.org and runs every step below. By hand:
 
 ```
 python3 tools/proto_match.py    # build/proto/map.txt: retail func_ -> original function name
