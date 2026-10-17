@@ -4,6 +4,9 @@
 set -e
 cd "$(dirname "$0")/.."
 out=$(make -j4 2>&1 || true); echo "$out" | grep -q "^OK: build matches retail" || { echo "build does not match; not pushing" >&2; exit 1; }
+# the same steps CI runs after the build
+.venv/bin/python tools/inventory.py >/dev/null || { echo "tools/inventory.py failed; not pushing" >&2; exit 1; }
+.venv/bin/python tools/progress.py >/dev/null || { echo "tools/progress.py failed; not pushing" >&2; exit 1; }
 .venv/bin/python tools/update_readme.py
 git add src/game README.md
 git diff --cached --quiet && { echo "nothing to commit"; exit 0; }
