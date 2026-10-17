@@ -26,7 +26,7 @@ def main():
         draft = next(p for p in (ROOT / "src" / "wip" / f"{name}.c",
                                  ROOT / "build" / "m2c" / "best" / f"{name}.c") if p.exists())
     text = draft.read_text()
-    m = re.search(r"/\* mwcc_pad: (\w+) \*/", text)
+    m = re.search(r"/\* mwcc_pad: ([\w ]+?) \*/", text)
     rule = m[1] if m else "b"
     d = ROOT / "build" / "permute" / name
     d.mkdir(parents=True, exist_ok=True)

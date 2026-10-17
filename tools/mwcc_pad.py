@@ -13,6 +13,9 @@ join of a value-producing `?:` (see ternary_joins).
 Whether a join came from `?:` or from an `if` isn't visible in the asm, so a C file can pick
 the rule with a comment: `/* mwcc_pad: any */` also treats conditional-branch joins as `?:`,
 `/* mwcc_pad: off */` disables padding for the file. The default is `b` (unconditional only).
+`unsteal` (e.g. `/* mwcc_pad: unsteal */` or `/* mwcc_pad: any unsteal */`) also undoes
+3.0.3's filling of branch delay slots from the branch target where 2.4 leaves them empty;
+Kuon's compiler mostly doesn't fill from the target, but sometimes does, so it's per file.
 
 usage: tools/mwcc_pad.py in.o out.o [source.c]
 """
@@ -87,24 +90,110 @@ def pad(asm, rule="b"):
     return "\n".join(out) + "\n", changed
 
 
+COND = re.compile(r"^(beq|bne|beqz|bnez|bgez|bgtz|blez|bltz|bc1f|bc1t|bc0f|bc0t)$")
+REF_MWCC = ROOT / "tools" / "compilers" / "mwcps2-2.4-001213" / "mwccps2.exe"
+
+
+def insn_text(line):
+    return line.split("*/", 1)[1].strip()
+
+
+def branches(asm):
+    """(line index of each conditional branch, its target label, delay-slot line index)."""
+    lines = asm.splitlines()
+    idx = [i for i, l in enumerate(lines) if INSN.match(l) or l.strip() == "nop"]
+    out = []
+    for k, i in enumerate(idx):
+        m = INSN.match(lines[i])
+        if m and COND.match(m[1]) and k + 1 < len(idx):
+            out.append((i, insn_text(lines[i]).split()[-1].split(",")[-1].strip(), idx[k + 1]))
+    return out
+
+
+def unsteal(asm, ref):
+    """Undo "fill the delay slot from the branch target", which 3.0.3 does and Kuon's
+    compiler doesn't. 2.4 (same front end) doesn't either, so wherever 2.4 leaves a
+    conditional branch's delay slot empty and 3.0.3 filled it, move the instruction back to
+    the start of the branch target."""
+    ours, theirs = branches(asm), branches(ref)
+    if len(ours) != len(theirs):
+        return asm
+    lines = asm.splitlines()
+    ref_lines = ref.splitlines()
+    inserts = {}
+    for n, ((bi, tgt, di), (_, _, rdi)) in enumerate(zip(ours, theirs)):
+        delay = lines[di].strip()
+        if not ref_lines[rdi].strip().endswith("nop") or delay == "nop" or not INSN.match(lines[di]):
+            continue
+        d = insn_text(lines[di])
+        t = next((i for i, l in enumerate(lines) if re.match(rf"^\s*{re.escape(tgt)}:", l)), None)
+        if t is None:
+            continue
+        prev = [i for i in range(t) if INSN.match(lines[i]) or lines[i].strip() == "nop"]
+        if not prev:
+            continue
+        new = f".Lunsteal{n}"
+        if INSN.match(lines[prev[-1]]) and insn_text(lines[prev[-1]]) == d:
+            # the target's first instruction was copied, not moved: branch to the copy
+            inserts.setdefault(prev[-1], []).append(f"  {new}:")
+        elif len(prev) >= 2 and INSN.match(lines[prev[-2]]) and NO_FALL.match(INSN.match(lines[prev[-2]])[1]):
+            # nothing falls into the target: put the instruction back in front of it
+            inserts.setdefault(t, []).extend([f"  {new}:", f"    {d}"])
+        else:
+            continue
+        lines[di] = "    nop"
+        lines[bi] = lines[bi][: lines[bi].rindex(tgt)] + new
+    out = []
+    for i, l in enumerate(lines):
+        out.extend(inserts.get(i, []))
+        out.append(l)
+    return "\n".join(out) + "\n"
+
+
+def disasm(obj, tmp):
+    r = subprocess.run([sys.executable, "-m", "spimdisasm.elfObjDisasm", "--instr-category", "r5900",
+                        "--compiler", "MWCCPS2", str(obj), str(tmp)], capture_output=True, text=True)
+    files = list(Path(tmp).glob("*.text.s"))
+    if r.returncode != 0 or len(files) != 1:
+        return None
+    return files[0].read_text()
+
+
+def reference(source, tmp):
+    """The 2.4 compile of the same source, disassembled, or None."""
+    obj = Path(tmp) / "ref.o"
+    r = subprocess.run([str(ROOT / "tools" / "wibo"), str(REF_MWCC), "-c", "-O4", "-relax_pointers",
+                        "-nostdinc", f"-I{ROOT / 'include'}", str(source), "-o", str(obj)],
+                       cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0 or not obj.exists():
+        return None
+    (Path(tmp) / "ref").mkdir()
+    return disasm(obj, Path(tmp) / "ref")
+
+
 def main():
     src, dst = sys.argv[1], sys.argv[2]
-    rule = "b"
+    words = set()
     if len(sys.argv) > 3:
-        m = re.search(r"/\* mwcc_pad: (\w+) \*/", Path(sys.argv[3]).read_text())
+        m = re.search(r"/\* mwcc_pad: ([\w ]+?) \*/", Path(sys.argv[3]).read_text())
         if m:
-            rule = m[1]
-    if rule == "off":
+            words = set(m[1].split())
+    rule = "any" if "any" in words else "b"
+    if "off" in words:
         Path(dst).write_bytes(Path(src).read_bytes())
         return
     with tempfile.TemporaryDirectory() as tmp:
-        r = subprocess.run([sys.executable, "-m", "spimdisasm.elfObjDisasm", "--instr-category", "r5900",
-                            "--compiler", "MWCCPS2", src, tmp], capture_output=True, text=True)
-        files = list(Path(tmp).glob("*.text.s"))
-        if r.returncode != 0 or len(files) != 1:
-            sys.exit(f"mwcc_pad: disassembly of {src} failed\n{r.stdout}{r.stderr}")
-        asm, changed = pad(files[0].read_text(), rule)
-        if not changed:
+        (Path(tmp) / "our").mkdir()
+        asm = disasm(src, Path(tmp) / "our")
+        if asm is None:
+            sys.exit(f"mwcc_pad: disassembly of {src} failed")
+        orig = asm
+        if "unsteal" in words:
+            ref = reference(sys.argv[3], tmp)
+            if ref is not None:
+                asm = unsteal(asm, ref)
+        asm, changed = pad(asm, rule)
+        if not changed and asm == orig:
             Path(dst).write_bytes(Path(src).read_bytes())
             return
         s = Path(tmp) / "padded.s"

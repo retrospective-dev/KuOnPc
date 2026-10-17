@@ -43,7 +43,7 @@ def one(name, seconds, common):
     if r.returncode != 0:
         return name, False
     d = ROOT / "build" / "permute" / name
-    rule = re.search(r"mwcc_pad: (\w+)", (d / "pad_rule.c").read_text())[1]
+    rule = re.search(r"mwcc_pad: ([\w ]+?) \*/", (d / "pad_rule.c").read_text())[1]
     for o in d.glob("output-*"):
         subprocess.run(["rm", "-rf", str(o)])
     try:
