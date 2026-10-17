@@ -218,7 +218,9 @@ def gather(jobs):
     for p in (ROOT / "src" / "game").glob("*.c"):
         for ret, n, params in DEF.findall(p.read_text()):
             if n == p.stem and "Unk" not in ret and "Unk" not in params:
-                sigs[n] = f"{' '.join(ret.split())} {n}({params.strip() or 'void'});"
+                # one line, no comments: definitions can span lines and carry /* reg */ notes
+                params = " ".join(re.sub(r"/\*.*?\*/", "", params, flags=re.S).split())
+                sigs[n] = f"{' '.join(ret.split())} {n}({params or 'void'});"
     order = (ROOT / "game_order.txt").read_text().split()
     todo = [n for n in order if n not in sigs]
     sdk = re.findall(r"^(\w[\w \*]*?)\s*\b(\w+)\(([^)]*)\);",
