@@ -411,7 +411,8 @@ def autocast(name, text, rounds=12):
 
 
 PAD_RULES = ["", "/* mwcc_pad: any */\n", "/* mwcc_pad: off */\n", "/* mwcc_pad: unsteal */\n",
-             "/* mwcc_pad: any unsteal */\n"]
+             "/* mwcc_pad: any unsteal */\n", "/* mwcc_pad: noternary */\n",
+             "/* mwcc_pad: noternary unsteal */\n"]
 
 
 def check_padded(name, text):

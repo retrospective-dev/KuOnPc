@@ -39,7 +39,8 @@ def score(name, text, tag):
     return int(m[1]) if m else 10**6
 
 
-RULES = ["", "/* mwcc_pad: any */\n", "/* mwcc_pad: unsteal */\n", "/* mwcc_pad: any unsteal */\n"]
+RULES = ["", "/* mwcc_pad: any */\n", "/* mwcc_pad: unsteal */\n", "/* mwcc_pad: any unsteal */\n",
+         "/* mwcc_pad: noternary */\n", "/* mwcc_pad: noternary unsteal */\n"]
 
 
 def search(name, text):

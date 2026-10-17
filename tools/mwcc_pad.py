@@ -16,9 +16,12 @@ the rule with a comment: `/* mwcc_pad: any */` also treats conditional-branch jo
 `unsteal` (e.g. `/* mwcc_pad: unsteal */` or `/* mwcc_pad: any unsteal */`) also undoes
 3.0.3's filling of branch delay slots from the branch target where 2.4 leaves them empty;
 Kuon's compiler mostly doesn't fill from the target, but sometimes does, so it's per file.
+`noternary` treats no join as a `?:` (for `if (...) return a; ... return b;`, which looks the same
+in the asm).
 
 usage: tools/mwcc_pad.py in.o out.o [source.c]
 """
+import os
 import re
 import subprocess
 import sys
@@ -30,7 +33,8 @@ CROSS = "mips-linux-gnu-"
 # control transfers that don't fall through to the instruction after their delay slot
 NO_FALL = re.compile(r"^(b|beq|bne|beqz|bnez|bgez|bgtz|blez|bltz|bc1f|bc1t|bc0f|bc0t|beql|bnel|"
                      r"beqzl|bnezl|bgezl|bgtzl|blezl|bltzl|bc1fl|bc1tl|j|jr)$")
-INSN = re.compile(r"^\s+/\* [0-9A-F]+ [0-9A-F]+ [0-9A-F]+ \*/\s+(\S+)")
+# an instruction line: spimdisasm's (with an address comment) or one this tool inserted
+INSN = re.compile(r"^\s+(?:/\* [0-9A-F]+ [0-9A-F]+ [0-9A-F]+ \*/\s+)?([a-z][\w.]*)(?:\s|$)")
 
 
 def dest(insn):
@@ -47,7 +51,7 @@ def ternary_joins(asm, any_branch=False):
     slot writing the same register as the instruction just before the label. CodeWarrior
     doesn't treat these as block starts, so they aren't padded. With any_branch, a conditional
     branch whose delay slot sets the default value (`c ? x : 0`) counts too."""
-    ins = [(m[1], line.split("*/", 1)[1].strip()) for line in asm.splitlines()
+    ins = [(m[1], insn_text(line)) for line in asm.splitlines()
            if (m := INSN.match(line))]
     b_delay = {}
     for k, (op, text) in enumerate(ins):
@@ -62,19 +66,24 @@ def ternary_joins(asm, any_branch=False):
             if made & set(b_delay.get(m[1], [])) - {None}:
                 joins.add(m[1])
         elif INSN.match(line):
-            before, last = last, line.split("*/", 1)[1].strip()
+            before, last = last, insn_text(line)
     return joins
 
 
-def pad(asm, rule="b"):
-    joins = ternary_joins(asm, any_branch=(rule == "any"))
+def pad(asm, rule="b", fall_only=False):
+    joins = set() if rule == "noternary" else ternary_joins(asm, any_branch=(rule == "any"))
     out, offset, prev2, prev1, changed = [], None, None, None, False
     for line in asm.splitlines():
         if line.startswith("glabel "):
             offset, prev2, prev1 = 0, None, None
         elif (m := re.match(r"^\s*(\.L\w+):", line)) and offset is not None:
-            falls = prev2 is None or not NO_FALL.match(prev2)
-            if falls and offset % 8 == 4 and m[1] not in joins:
+            op2 = prev2.split()[0] if prev2 else None
+            after_jump = op2 in ("b", "j", "jr")
+            after_cond = op2 is not None and not after_jump and bool(NO_FALL.match(op2))
+            # the arm right after `b join` of a value-producing ?: isn't a block start either
+            ternary_arm = op2 == "b" and prev2.split()[-1] in joins
+            skip = m[1] in joins or ternary_arm or after_cond or (fall_only and after_jump)
+            if not skip and offset % 8 == 4:
                 out.append("    nop")
                 offset += 4
                 changed = True
@@ -85,7 +94,7 @@ def pad(asm, rule="b"):
             m = INSN.match(line)
             if m and offset is not None:
                 offset += 4
-                prev2, prev1 = prev1, m[1]
+                prev2, prev1 = prev1, insn_text(line)
         out.append(line)
     return "\n".join(out) + "\n", changed
 
@@ -95,7 +104,7 @@ REF_MWCC = ROOT / "tools" / "compilers" / "mwcps2-2.4-001213" / "mwccps2.exe"
 
 
 def insn_text(line):
-    return line.split("*/", 1)[1].strip()
+    return line.split("*/", 1)[-1].strip()
 
 
 def branches(asm):
@@ -122,10 +131,9 @@ def unsteal(asm, ref):
     ref_lines = ref.splitlines()
     inserts = {}
     for n, ((bi, tgt, di), (_, _, rdi)) in enumerate(zip(ours, theirs)):
-        delay = lines[di].strip()
-        if not ref_lines[rdi].strip().endswith("nop") or delay == "nop" or not INSN.match(lines[di]):
-            continue
         d = insn_text(lines[di])
+        if insn_text(ref_lines[rdi]) != "nop" or d == "nop" or not INSN.match(lines[di]):
+            continue
         t = next((i for i, l in enumerate(lines) if re.match(rf"^\s*{re.escape(tgt)}:", l)), None)
         if t is None:
             continue
@@ -137,8 +145,12 @@ def unsteal(asm, ref):
             # the target's first instruction was copied, not moved: branch to the copy
             inserts.setdefault(prev[-1], []).append(f"  {new}:")
         elif len(prev) >= 2 and INSN.match(lines[prev[-2]]) and NO_FALL.match(INSN.match(lines[prev[-2]])[1]):
-            # nothing falls into the target: put the instruction back in front of it
+            # nothing falls into the target: put the instruction back in front of it, and drop
+            # the old label if nothing else branches to it (it's no longer a block start)
             inserts.setdefault(t, []).extend([f"  {new}:", f"    {d}"])
+            others = [l for i, l in enumerate(lines) if i != bi and INSN.match(l) and insn_text(l).endswith(tgt)]
+            if not others:
+                lines[t] = ""
         else:
             continue
         lines[di] = "    nop"
@@ -178,7 +190,7 @@ def main():
         m = re.search(r"/\* mwcc_pad: ([\w ]+?) \*/", Path(sys.argv[3]).read_text())
         if m:
             words = set(m[1].split())
-    rule = "any" if "any" in words else "b"
+    rule = "any" if "any" in words else "noternary" if "noternary" in words else "b"
     if "off" in words:
         Path(dst).write_bytes(Path(src).read_bytes())
         return
@@ -192,7 +204,7 @@ def main():
             ref = reference(sys.argv[3], tmp)
             if ref is not None:
                 asm = unsteal(asm, ref)
-        asm, changed = pad(asm, rule)
+        asm, changed = pad(asm, rule, fall_only="fallonly" in words or bool(os.environ.get("KUON_PAD_FALLONLY")))
         if not changed and asm == orig:
             Path(dst).write_bytes(Path(src).read_bytes())
             return
