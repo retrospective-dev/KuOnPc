@@ -76,8 +76,31 @@ def prep_asm(name):
     return out
 
 
-def run_m2c(name, opts, ctx=True):
-    ctx = ["--context", str(CTX)] if ctx and CTX.exists() else []
+_SIG_CACHE = {}
+
+
+def ctx_file(name, include_self=True):
+    """Per-function context: every other function declared as returning a value (`void`
+    callees become `s32`, which changes nothing when the value is unused, but lets m2c read
+    $v0 after calls whose return value m2c couldn't see). Without include_self, m2c infers
+    the function's own signature afresh."""
+    if "sigs" not in _SIG_CACHE:
+        _SIG_CACHE["sigs"] = load_sigs()
+    lines = []
+    for n, proto in _SIG_CACHE["sigs"].items():
+        if n == name:
+            if include_self:
+                lines.append(proto)
+            continue
+        lines.append(re.sub(r"^void (?!\*)", "s32 ", proto))
+    out = ROOT / "build" / "m2c" / "ctx" / f"{name}.h"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(CTX_TYPES + "\n".join(lines) + "\n")
+    return out
+
+
+def run_m2c(name, opts, ctx=True, include_self=True):
+    ctx = ["--context", str(ctx_file(name, include_self))] if ctx and SIGS.exists() else []
     r = subprocess.run([PY, "-m", "m2c.main", "-t", "mipsee-mwcc-c", "--valid-syntax", *ctx, *opts,
                         str(prep_asm(name))], cwd=ROOT, capture_output=True, text=True)
     if r.returncode != 0:
@@ -137,7 +160,10 @@ def add_protos(src, name, sigs):
 
 
 def gather(jobs):
-    """Write build/m2c/sigs.txt and ctx.h: one prototype per game function."""
+    """Write build/m2c/sigs.txt and ctx.h: one prototype per game function.
+
+    Pass 1 reads each function without context; pass 2 reads it again with pass 1's callee
+    signatures, which fixes functions that pass their arguments straight on (tail calls)."""
     sigs = {}
     for p in (ROOT / "src" / "game").glob("*.c"):
         for ret, n, params in DEF.findall(p.read_text()):
@@ -145,9 +171,11 @@ def gather(jobs):
                 sigs[n] = f"{' '.join(ret.split())} {n}({params.strip() or 'void'});"
     order = (ROOT / "game_order.txt").read_text().split()
     todo = [n for n in order if n not in sigs]
+    sdk = re.findall(r"^(\w[\w \*]*?)\s*\b(func_[0-9A-F]{8})\(([^)]*)\);",
+                     (ROOT / "include" / "common.h").read_text(), re.M)
 
-    def one(n):
-        m = re.search(rf"^(.*?)\s*\b{n}\(([^)]*)\)\s*\{{", run_m2c(n, [], ctx=False) or "", re.M)
+    def one(n, ctx):
+        m = re.search(rf"^(.*?)\s*\b{n}\(([^)]*)\)\s*\{{", run_m2c(n, [], ctx=ctx, include_self=False) or "", re.M)
         if not m:
             return n, f"void {n}();"
         ret = m[1].replace("M2C_UNK", "s32").strip()
@@ -156,34 +184,22 @@ def gather(jobs):
             return n, f"void {n}();"
         return n, f"{ret} {n}({params});"
 
-    with ThreadPoolExecutor(jobs) as ex:
-        for n, proto in ex.map(one, todo):
-            sigs[n] = proto
+    def write():
+        names = order + [n for _, n, _ in sdk]
+        CTX.parent.mkdir(parents=True, exist_ok=True)
+        SIGS.write_text("".join(f"{n} {sigs[n]}\n" for n in names if n in sigs))
+        CTX.write_text(CTX_TYPES + "".join(sigs[n] + "\n" for n in names if n in sigs))
+        _SIG_CACHE.clear()
+
     # SDK/runtime prototypes known so far live in common.h
-    for ret, n, params in re.findall(r"^(\w[\w \*]*?)\s*\b(func_[0-9A-F]{8})\(([^)]*)\);",
-                                     (ROOT / "include" / "common.h").read_text(), re.M):
+    for ret, n, params in sdk:
         sigs[n] = f"{ret.strip()} {n}({params});"
-        order.append(n)
-    CTX.parent.mkdir(parents=True, exist_ok=True)
-    SIGS.write_text("".join(f"{n} {sigs[n]}\n" for n in order if n in sigs))
-    CTX.write_text(CTX_TYPES + "".join(sigs[n] + "\n" for n in order if n in sigs))
+    for ctx in (False, True):
+        with ThreadPoolExecutor(jobs) as ex:
+            for n, proto in ex.map(lambda n: one(n, ctx), todo):
+                sigs[n] = proto
+        write()
     print(f"gathered {len(sigs)} signatures")
-
-
-def fix_globals(src, name):
-    """Globals the retail code reaches with %hi/%lo (not $gp) are bigger than the small-data
-    threshold (8 bytes); MWCC would use $gp for a scalar extern, so declare them as arrays
-    and use element 0."""
-    asm = (ROOT / "asm" / "game" / f"{name}.s").read_text()
-    far = set(re.findall(r"%hi\((D_[0-9A-F]{8})\)", asm))
-    for g in far:
-        decl = re.search(rf"^extern ([\w \*]+?) ?\b{g};$", src, re.M)
-        if not decl:
-            continue
-        head, body = src[: decl.start()], src[decl.end():]
-        body = re.sub(rf"\b{g}\b(?!\[)", f"{g}[0]", body)
-        src = head + f"extern {decl[1].strip()} {g}[];" + body
-    return src
 
 
 def clean(src):
