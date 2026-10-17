@@ -558,14 +558,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("funcs", nargs="*")
     ap.add_argument("--gather", action="store_true", help="rebuild the signature context first")
+    ap.add_argument("--gather-only", action="store_true", help="rebuild the signature context and stop")
     ap.add_argument("--bucket")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--allow-float", action="store_true")
     ap.add_argument("--only-float", action="store_true", help="only FPU/VU0 functions (phase 2)")
     ap.add_argument("--jobs", type=int, default=4)
     a = ap.parse_args()
-    if a.gather or not CTX.exists():
+    if a.gather or a.gather_only or not CTX.exists():
         gather(a.jobs)
+    if a.gather_only:
+        return
     sigs = load_sigs()
     done = {p.stem for p in (ROOT / "src" / "game").glob("*.c")}
     if a.funcs:
