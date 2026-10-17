@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_001E0090(void);
+void MI_Get_Arrow(void);
 
 void func_001E0020(void) {
-    func_001E0090();
+    MI_Get_Arrow();
 }

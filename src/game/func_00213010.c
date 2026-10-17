@@ -2,9 +2,9 @@
 #include "kuon_types.h"
 
 void func_00213040(void);
-void func_00213330(char *lpFormat);
-extern unsigned short **D_0025E758;
+void __sghMsg_PrintHelpWindow(char *lpFormat);
+extern unsigned short **gsHelpDiceCast;
 void func_00213010(void) {
     func_00213040();
-    func_00213330((s8 *) D_0025E758);
+    __sghMsg_PrintHelpWindow((s8 *) gsHelpDiceCast);
 }

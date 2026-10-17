@@ -1,0 +1,16 @@
+#include "common.h"
+#include "kuon_types.h"
+
+extern PointLightMng_t PointLightMng[16];
+s32 func_00103E88(f32 *);
+
+s32 UpdatePointLightColor(s32 PLightNo, f32 *Col) {
+    PointLightMng_t *temp_v1;
+
+    temp_v1 = &PointLightMng[PLightNo];
+    if (temp_v1->bUse == 0) {
+        return 0;
+    }
+    func_00103E88(temp_v1->Col);
+    return 1;
+}

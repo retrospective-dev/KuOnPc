@@ -67,17 +67,18 @@ def retail_functions():
     rom = (ROOT / "SLES_534.11.rom").read_bytes()
     funcs = []
     for name in (ROOT / "game_order.txt").read_text().split():
-        words = []
+        words, start = [], None
         for line in (ROOT / "asm" / "game" / f"{name}.s").read_text().split("endlabel")[0].splitlines():
             m = re.match(r"\s+/\* [0-9A-F]+ ([0-9A-F]{8}) [0-9A-F]{8} \*/\s+(.*)", line)
             if not m:
                 continue
             a = int(m[1], 16)
+            start = a if start is None else start
             w = struct.unpack_from("<I", rom, a - VRAM)[0]
             words.append(w & 0xFFFF0000 if re.search(r"%(hi|lo|gp_rel)\(", m[2]) else mask(w))
         while words and words[-1] == 0:
             words.pop()
-        funcs.append((int(name[5:], 16), name, tuple(words)))
+        funcs.append((start, name, tuple(words)))
     return funcs
 
 

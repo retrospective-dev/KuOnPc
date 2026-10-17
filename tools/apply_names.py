@@ -39,7 +39,8 @@ def main():
     data = {}
     for line in (ROOT / "build" / "proto" / "data_map.txt").read_text().splitlines():
         r, _, p, _ = line.split()
-        if r.startswith("D_") and p != "None" and "+" not in p and p not in C_WORDS:
+        # compiler-generated names (@123 for literals) aren't C identifiers
+        if r.startswith("D_") and re.fullmatch(r"[A-Za-z_]\w*", p) and p not in C_WORDS:
             data[r] = p
     # unique names: a repeated name gets its address appended
     counts = Counter(list(funcs.values()) + list(data.values()))

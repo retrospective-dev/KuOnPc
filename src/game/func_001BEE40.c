@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_001D0200(void);
+void SfxMng_DeleteBySfxIdx(void);
 
 void func_001BEE40(void) {
-    func_001D0200();
+    SfxMng_DeleteBySfxIdx();
 }

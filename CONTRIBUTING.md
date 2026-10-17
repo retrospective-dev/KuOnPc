@@ -48,6 +48,16 @@ typedef names, so `gen_types.py` names each struct after the variables that use 
 When decompiling by hand, read the function's entry in `build/proto/dwarf/` first: it has the
 real parameter and local names and types.
 
+## Names
+
+Functions and globals carry their original names from the prototype (`SetAniData`,
+`MdlMng`...), applied with `tools/apply_names.py`; the names live in `symbol_addrs.txt`, so `make split`
+names the asm after them. Functions the prototype doesn't cover keep splat's `func_XXXXXXXX` and
+data `D_XXXXXXXX`. Static functions whose name is used in more than one file have the address appended
+(`_SendPacketByDma_001C4D90`). Struct types whose usage-derived name equals a function or global name
+get a `_t` suffix (`MdlMng_t` is the type of the global `MdlMng`). `build/proto/renames.txt` lists every
+old -> new name.
+
 ## Matching workflow
 
 1. `python3 tools/todo.py --bucket tiny` lists the easiest unmatched integer functions.

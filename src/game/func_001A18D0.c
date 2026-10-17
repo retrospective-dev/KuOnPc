@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_001A2880(void);
+void mstrm_ThreadInit(void);
 
 void func_001A18D0(void) {
-    func_001A2880();
+    mstrm_ThreadInit();
 }

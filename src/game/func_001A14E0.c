@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_001A1E80(void);
+void mfstrm_SetReadEndCallBack(void);
 
 void func_001A14E0(void) {
-    func_001A1E80();
+    mfstrm_SetReadEndCallBack();
 }

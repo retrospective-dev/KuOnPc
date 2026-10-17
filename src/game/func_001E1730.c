@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_001D9EC0(void);
+void KnMenuWindMng_SetTopWindRate(void);
 
 void func_001E1730(void) {
-    func_001D9EC0();
+    KnMenuWindMng_SetTopWindRate();
 }

@@ -87,21 +87,20 @@ def main():
                     votes[canon[t.off]][b] += 1
     # type names must not clash with function or global names (symbol_addrs.txt)
     symbols = set(re.findall(r"^(\w+) = 0x", (ROOT / "symbol_addrs.txt").read_text(), re.M))
-    names, used = {}, set(symbols)
+    names, used = {}, set()
+
+    def free(n):
+        """n, or n_t if a function/global already has that name."""
+        return n + "_t" if n in symbols else n
     for k in sorted(groups, key=lambda k: -sum(votes[k].values())):
-        cands = [n for n, _ in votes[k].most_common()] + []
-        kind = KINDS[dies[groups[k][0]].tag]
-        name = next((n for n in cands if n not in used and n + "_t" not in used and n not in RESERVED), None)
+        cands = [free(n) for n, _ in votes[k].most_common() if n not in RESERVED]
+        name = next((n for n in cands if n not in used), None)
         if name is None:
-            name = next((n for n in cands if n not in RESERVED and n + "_t" not in used), None)
-        if name is None:
-            base = cands[0] if cands else f"{kind.capitalize()}_{dies[groups[k][0]].attrs.get('byte_size', 0):X}"
-            i = 2
-            while f"{base}{i}" in used:
-                i += 1
-            name = f"{base}{i}" if (cands or base in used) else base
-        if name in symbols:
-            name += "_t"
+            kind = KINDS[dies[groups[k][0]].tag]
+            base = cands[0] if cands else free(f"{kind.capitalize()}_{dies[groups[k][0]].attrs.get('byte_size', 0):X}")
+            name, i = base, 2
+            while name in used:
+                name, i = f"{base}{i}", i + 1
         used.add(name)
         names[k] = name
 

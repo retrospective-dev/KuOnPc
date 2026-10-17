@@ -1,8 +1,8 @@
 #include "common.h"
 
-extern s32 D_0025E750;
-void func_00213330(s32);
+extern s32 gsHelpChoiDice;
+void __sghMsg_PrintHelpWindow(s32);
 
 void func_00212F10(void) {
-    func_00213330(D_0025E750);
+    __sghMsg_PrintHelpWindow(gsHelpChoiDice);
 }

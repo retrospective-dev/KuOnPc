@@ -306,7 +306,7 @@ def structify(name, src):
         decl = re.compile(rf"\bvoid \*{ident}\b")
         if not decl.search(out):
             return None
-        sname = f"Unk_{name[5:]}" if len(fields) == 1 else f"Unk_{name[5:]}_{ident}"
+        sname = f"Unk_{name}" if len(fields) == 1 else f"Unk_{name}_{ident}"
         lines, pos = [], 0
         width = 3 if max(f) >= 0x100 else 2
         for o in sorted(f):

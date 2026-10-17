@@ -98,7 +98,7 @@ from the URL in the `KUON_ELF_URL` repository secret.
 
 ```sh
 python3 tools/todo.py --bucket small     # easiest unmatched functions
-python3 tools/diff.py func_0014A670      # compile one function and diff it against retail
+python3 tools/diff.py SetAniData        # compile one function and diff it against retail
 python3 tools/m2c_batch.py --bucket tiny # draft functions automatically, keep exact matches
 ```
 
@@ -122,7 +122,7 @@ decisions are logged in [`docs/decisions.md`](docs/decisions.md).
 | **Target** | PAL `SLES_534.11` v1.01, Kuon (SLES-53411) |
 | **Compiler** | Metrowerks CodeWarrior for PS2 3.0b52 (front end "MW MIPS C Compiler 2.4.1.01"), `-O4,p` |
 | **SDK** | Sony PS2 SDK 2.8.0 |
-| **Prototype** | The unstripped US prototype of 2 August 2004 supplies original function names, source file layout, struct definitions and types (see `CONTRIBUTING.md`) |
+| **Prototype** | The unstripped US prototype of 2 August 2004 supplies original function names (2,636 applied), global names, source file layout, struct definitions and types (see `CONTRIBUTING.md`) |
 
 ### What's in the executable
 

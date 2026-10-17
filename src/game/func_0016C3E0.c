@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_00170CA0(void);
+void fsScr_ScriptStart(void);
 
 void func_0016C3E0(void) {
-    func_00170CA0();
+    fsScr_ScriptStart();
 }

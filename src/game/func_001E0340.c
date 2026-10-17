@@ -1,4 +1,0 @@
-#include "common.h"
-
-void func_001E0340(void) {
-}

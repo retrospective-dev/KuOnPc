@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_001A2640(void);
+void mstrm_AllocStreamBuffer(void);
 
 void func_001A16D0(void) {
-    func_001A2640();
+    mstrm_AllocStreamBuffer();
 }

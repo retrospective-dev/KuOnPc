@@ -8,7 +8,7 @@ typedef struct {
     /* 0x0C */ u32 unkC;
 } Unk_001D46D0;
 
-u8 *func_001D48D0(u8 *pBuffer_, unsigned int buffer_size_, unsigned short data_size_);
+u8 *SList_Init(u8 *pBuffer_, unsigned int buffer_size_, unsigned short data_size_);
 void func_001D46D0(Unk_001D46D0 *pSList_) {
-    func_001D48D0(pSList_, pSList_->unkC, pSList_->unk6);
+    SList_Init(pSList_, pSList_->unkC, pSList_->unk6);
 }

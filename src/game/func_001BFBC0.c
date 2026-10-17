@@ -1,7 +1,7 @@
 #include "common.h"
 
-void func_001CA520(void);
+void SfxMng_BurnModel(void);
 
 void func_001BFBC0(void) {
-    func_001CA520();
+    SfxMng_BurnModel();
 }
