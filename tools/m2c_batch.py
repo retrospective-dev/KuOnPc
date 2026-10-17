@@ -279,10 +279,28 @@ def structify(name, src):
 def render(name, src):
     """Yield candidate C files for one m2c draft (struct form first, then raw macro form)."""
     s = structify(name, src)
-    if s is not None:
-        yield '#include "common.h"\n\n' + bytes_ptr(s).strip() + "\n"
-    if "M2C_FIELD" in src:
-        yield '#include "common.h"\n#include "m2c_macros.h"\n\n' + bytes_ptr(src).strip() + "\n"
+    for fix in (lambda x: x, byte_pointers):
+        if s is not None:
+            yield '#include "common.h"\n\n' + fix(bytes_ptr(s)).strip() + "\n"
+        if "M2C_FIELD" in src:
+            yield '#include "common.h"\n#include "m2c_macros.h"\n\n' + fix(bytes_ptr(src)).strip() + "\n"
+
+
+def byte_pointers(src):
+    """m2c writes pointer arithmetic in bytes even on typed pointers (`s32 *p; p += 4`) and
+    dereferences untyped data directly (`*(&D_X + off)`). Make that literal for MWCC: typed
+    integer pointers become `u8 *` with casts at each dereference, and dereferenced data
+    gets an s32 load (tools/typefix.py adjusts the width)."""
+    ptrs = {}
+    for m in re.finditer(r"(?<![\w*])(s8|u8|s16|u16|s32|u32) \*(\w+)(?=[;,)])", src):
+        if not m[2].startswith(("func_", "D_")):
+            ptrs[m[2]] = m[1]
+    not_decl = "(?<!s8 )(?<!u8 )(?<!s16 )(?<!u16 )(?<!s32 )(?<!u32 )"
+    for v, t in ptrs.items():
+        src = re.sub(rf"{not_decl}(?<![\w)\]])\*{v}\b", f"*({t} *){v}", src)
+        src = re.sub(rf"(?<![\w*])(s8|u8|s16|u16|s32|u32) \*{v}(?=[;,)])", f"u8 *{v}", src)
+    src = re.sub(r"(?<![\w)\]])\*\((&D_[0-9A-F]{8})", r"*(s32 *)(\1", src)
+    return src
 
 
 def bytes_ptr(src):
