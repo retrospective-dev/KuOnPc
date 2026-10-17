@@ -279,7 +279,8 @@ def structify(name, src):
 def render(name, src):
     """Yield candidate C files for one m2c draft (struct form first, then raw macro form)."""
     s = structify(name, src)
-    for fix in (lambda x: x, byte_pointers):
+    for fix in (lambda x: x, byte_pointers, lambda x: stack_arrays(x, name),
+                lambda x: stack_arrays(byte_pointers(x), name)):
         if s is not None:
             yield '#include "common.h"\n\n' + fix(bytes_ptr(s)).strip() + "\n"
         if "M2C_FIELD" in src:
@@ -300,6 +301,31 @@ def byte_pointers(src):
         src = re.sub(rf"{not_decl}(?<![\w)\]])\*{v}\b", f"*({t} *){v}", src)
         src = re.sub(rf"(?<![\w*])(s8|u8|s16|u16|s32|u32) \*{v}(?=[;,)])", f"u8 *{v}", src)
     src = re.sub(r"(?<![\w)\]])\*\((&D_[0-9A-F]{8})", r"*(s32 *)(\1", src)
+    return src
+
+
+def stack_arrays(src, name):
+    """m2c declares a local whose address is taken as a scalar (`s8 sp10;` then `&sp10`),
+    but it's usually a buffer. Size it as an array up to the next stack slot (another
+    local, a register save, or the frame size)."""
+    asm = (ROOT / "asm" / "game" / f"{name}.s").read_text()
+    frame = re.search(r"addiu\s+\$sp, \$sp, -(0x[0-9A-F]+)", asm)
+    if not frame:
+        return src
+    bounds = {int(frame[1], 16)}
+    bounds |= {int(o, 16) for o in re.findall(r"\b(?:sd|sq|sw|swc1)\s+\$(?:ra|s\d|fp|f2\d|f3\d), (0x[0-9A-F]+)\(\$sp\)", asm)}
+    decls = {m[2]: (m[1], int(m[2][2:], 16)) for m in re.finditer(r"^\s+(s8|u8|s16|u16|s32|u32) (sp[0-9A-F]+);$", src, re.M)}
+    bounds |= {o for _, o in decls.values()}
+    size = {"s8": 1, "u8": 1, "s16": 2, "u16": 2, "s32": 4, "u32": 4}
+    for v, (t, off) in decls.items():
+        if f"&{v}" not in src:
+            continue
+        nxt = min((b for b in bounds if b > off), default=None)
+        if nxt is None or (nxt - off) // size[t] < 2:
+            continue
+        n = (nxt - off) // size[t]
+        src = re.sub(rf"^(\s+){t} {v};$", rf"\1{t} {v}[{n}];", src, flags=re.M)
+        src = src.replace(f"&{v}", f"{v}")
     return src
 
 
@@ -478,7 +504,8 @@ def main():
                 report.append((name, best))
     # near-miss list: fewest differing instructions first
     report.sort(key=lambda r: (not isinstance(r[1], int), r[1] if isinstance(r[1], int) else 0, r[0]))
-    (ROOT / "build" / "m2c" / "report.txt").write_text("".join(f"{n} {b}\n" for n, b in report))
+    # a run on named functions doesn't replace the full report
+    (ROOT / "build" / "m2c" / ("report_partial.txt" if a.funcs else "report.txt")).write_text("".join(f"{n} {b}\n" for n, b in report))
     print(f"m2c batch: {matched} / {len(todo)} matched; near misses in build/m2c/report.txt")
 
 
