@@ -43,6 +43,18 @@ commit. If a single byte differs, the build fails.
 The small functions went first, so the share of code lags behind the function count. Run
 `make progress` for live numbers.
 
+## Milestones
+
+| Date | |
+|---|---|
+| 2026-10-17 | Original function and global names applied from the prototype: 2,636 functions, 535 globals |
+| 2026-10-17 | 9 functions ported from [Mulberry](https://github.com/weirdbeardgame/Mulberry) (memory allocator, binder, math, events) |
+| 2026-10-17 | Phase 2 started: 97 floating-point functions matched on the first pass |
+| 2026-10-17 | Exact compiler setup found: CodeWarrior 3.0b52 with `-O4,p` (from Mulberry's settings) |
+| 2026-10-17 | Aug 2004 US prototype found to be unstripped: names, types, struct layouts and source files for 94% of functions |
+| 2026-10-17 | Automatic decompilation pipeline: m2c drafts, type search, permuter |
+| 2026-10-16 | Matching build on GitHub Actions; 433 functions matched |
+
 ## Roadmap
 
 The full plan is in [`SPEC.md`](SPEC.md).
