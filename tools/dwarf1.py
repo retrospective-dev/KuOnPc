@@ -27,7 +27,7 @@ FT = {0x1: "char", 0x2: "signed char", 0x3: "unsigned char", 0x4: "short", 0x5: 
       0x6: "unsigned short", 0x7: "int", 0x8: "int", 0x9: "unsigned int", 0xA: "long", 0xB: "long",
       0xC: "unsigned long", 0xD: "void*", 0xE: "float", 0xF: "double", 0x10: "long double",
       0x14: "void", 0x15: "bool", 0x8008: "long long", 0x8208: "unsigned long long",
-      0x8108: "long long", 0x8408: "u128", 0x8508: "s128", 0x8308: "u128"}
+      0x8108: "long long", 0x8408: "u128", 0x8508: "s128", 0x8308: "u128", 0xA510: "u128"}
 REGS = ["zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
         "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra"]
 
@@ -192,6 +192,9 @@ class Printer:
         while p < len(b):
             op = b[p]; p += 1
             if op in (1, 2, 3, 4):
+                if p + 4 > len(b):
+                    out.append(f"op{op}?")
+                    break
                 v = struct.unpack_from("<i" if op == 4 else "<I", b, p)[0]; p += 4
                 if op == 1:
                     out.append(REGS[v] if v < 32 else f"f{v - 32}")

@@ -79,23 +79,53 @@ def prep_asm(name):
 _SIG_CACHE = {}
 
 
+PROTO_DIR = ROOT / "build" / "m2c"
+
+
+def proto_info():
+    """Types, prototypes and typed globals from the prototype's debug info (tools/gen_types.py),
+    or empty if it hasn't been generated."""
+    if "proto" not in _SIG_CACHE:
+        types = protos = externs = None
+        if (PROTO_DIR / "proto_types.h").exists():
+            types = (PROTO_DIR / "proto_types.h").read_text()
+            protos = dict(l.split(" ", 1) for l in (PROTO_DIR / "proto_protos.txt").read_text().splitlines() if l)
+            externs = dict(l.split(" ", 1) for l in (PROTO_DIR / "proto_externs.txt").read_text().splitlines() if l)
+        _SIG_CACHE["proto"] = (types or "", protos or {}, externs or {})
+    return _SIG_CACHE["proto"]
+
+
 def ctx_file(name, include_self=True):
-    """Per-function context: every other function declared as returning a value (`void`
-    callees become `s32`, which changes nothing when the value is unused, but lets m2c read
-    $v0 after calls whose return value m2c couldn't see). Without include_self, m2c infers
-    the function's own signature afresh."""
+    """Per-function context. Signatures, types and globals from the prototype's debug info
+    where known; otherwise m2c's own reading of each function, with every other function
+    declared as returning a value (`void` callees become `s32`, which changes nothing when
+    the value is unused, but lets m2c read $v0 after calls whose return value it couldn't
+    see). Without include_self, m2c infers the function's own signature afresh."""
     if "sigs" not in _SIG_CACHE:
         _SIG_CACHE["sigs"] = load_sigs()
+    types, protos, externs = proto_info()
+    if include_self and name in protos:
+        # same text for every such function, so m2c's parse cache is reused
+        shared = ROOT / "build" / "m2c" / "ctx" / "_shared.h"
+        if "shared" not in _SIG_CACHE:
+            lines = [protos.get(n) or re.sub(r"^void (?!\*)", "s32 ", p) for n, p in _SIG_CACHE["sigs"].items()]
+            text = CTX_TYPES + types + "\n".join(lines) + "\n" + "\n".join(externs.values()) + "\n"
+            shared.parent.mkdir(parents=True, exist_ok=True)
+            if not shared.exists() or shared.read_text() != text:
+                shared.write_text(text)
+            _SIG_CACHE["shared"] = shared
+        return _SIG_CACHE["shared"]
     lines = []
     for n, proto in _SIG_CACHE["sigs"].items():
-        if n == name:
-            if include_self:
-                lines.append(proto)
+        if n == name and not include_self:
             continue
-        lines.append(re.sub(r"^void (?!\*)", "s32 ", proto))
+        if n in protos:
+            lines.append(protos[n])
+        else:
+            lines.append(proto if n == name else re.sub(r"^void (?!\*)", "s32 ", proto))
     out = ROOT / "build" / "m2c" / "ctx" / f"{name}.h"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(CTX_TYPES + "\n".join(lines) + "\n")
+    out.write_text(CTX_TYPES + types + "\n".join(lines) + "\n" + "\n".join(externs.values()) + "\n")
     return out
 
 
@@ -146,14 +176,23 @@ def add_protos(src, name, sigs):
     # functions used by address come out as `extern T func_X;`: declare them as functions
     src = re.sub(r"^extern [\w \*]+? (func_[0-9A-F]{8});\n",
                  lambda m: (sigs.get(m[1], f"void {m[1]}();")) + "\n", src, flags=re.M)
+    _, known, externs = proto_info()
     head, sep, body = src.partition(f"{name}(")
     declared = set(re.findall(r"\b(func_[0-9A-F]{8})\(", head))
     used = sorted(set(re.findall(r"\b(func_[0-9A-F]{8})\b", body)) - declared - {name})
     protos = []
     for f in used:
-        if f not in sigs:
+        if f in known:
+            protos.append(known[f])
+        elif f in sigs:
+            protos.append(sigs[f])
+        else:
             return None
-        protos.append(sigs[f])
+    # globals m2c took from the context
+    have = set(re.findall(r"\b(D_[0-9A-F]{8})\b", head))
+    for g in sorted(set(re.findall(r"\b(D_[0-9A-F]{8})\b", body)) - have):
+        if g in externs:
+            protos.append(externs[g])
     if not protos:
         return src
     return "\n".join(protos) + "\n" + src
@@ -281,10 +320,11 @@ def render(name, src):
     s = structify(name, src)
     for fix in (lambda x: x, byte_pointers, lambda x: stack_arrays(x, name),
                 lambda x: stack_arrays(byte_pointers(x), name)):
+        inc = '#include "common.h"\n' + ('#include "kuon_types.h"\n' if proto_info()[0] else "")
         if s is not None:
-            yield '#include "common.h"\n\n' + fix(bytes_ptr(s)).strip() + "\n"
+            yield inc + "\n" + fix(bytes_ptr(s)).strip() + "\n"
         if "M2C_FIELD" in src:
-            yield '#include "common.h"\n#include "m2c_macros.h"\n\n' + fix(bytes_ptr(src)).strip() + "\n"
+            yield inc + '#include "m2c_macros.h"\n\n' + fix(bytes_ptr(src)).strip() + "\n"
 
 
 def byte_pointers(src):
