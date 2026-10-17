@@ -85,17 +85,23 @@ def main():
                 b = base_name(d.name)
                 if b:
                     votes[canon[t.off]][b] += 1
-    names, used = {}, set()
+    # type names must not clash with function or global names (symbol_addrs.txt)
+    symbols = set(re.findall(r"^(\w+) = 0x", (ROOT / "symbol_addrs.txt").read_text(), re.M))
+    names, used = {}, set(symbols)
     for k in sorted(groups, key=lambda k: -sum(votes[k].values())):
         cands = [n for n, _ in votes[k].most_common()] + []
         kind = KINDS[dies[groups[k][0]].tag]
-        name = next((n for n in cands if n not in used and n not in RESERVED), None)
+        name = next((n for n in cands if n not in used and n + "_t" not in used and n not in RESERVED), None)
+        if name is None:
+            name = next((n for n in cands if n not in RESERVED and n + "_t" not in used), None)
         if name is None:
             base = cands[0] if cands else f"{kind.capitalize()}_{dies[groups[k][0]].attrs.get('byte_size', 0):X}"
             i = 2
             while f"{base}{i}" in used:
                 i += 1
             name = f"{base}{i}" if (cands or base in used) else base
+        if name in symbols:
+            name += "_t"
         used.add(name)
         names[k] = name
 
@@ -176,7 +182,7 @@ def main():
     header = "\n".join(lines) + "\n"
     (ROOT / "include" / "kuon_types.h").write_text(header)
 
-    # prototypes for retail functions, under their retail (func_) names
+    # prototypes for retail functions, under their retail names
     proto_name = {}
     for line in (ROOT / "build" / "proto" / "map.txt").read_text().splitlines():
         r, p, s = line.split()
@@ -188,8 +194,8 @@ def main():
             ps = ", ".join(re.sub(r"\b[us]128 ", "u128_t ", pr.typename(p, p.name or f"arg{i}"))
                            for i, p in enumerate(params)) or "void"
             for r in proto_name[d.name]:
-                protos.append(re.sub(r"\b[us]128 ", "u128_t ", f"{pr.typename(d, r + '(' + ps + ')')};"))
-    # globals: retail D_ symbols that start exactly at a prototype global take its type
+                protos.append((r, re.sub(r"\b[us]128 ", "u128_t ", f"{pr.typename(d, r + '(' + ps + ')')};")))
+    # globals: retail data symbols that start exactly at a prototype global take its type
     gtype = {}
     for d in dies.values():
         if d.tag in ("global_variable", "local_variable") and "location" in d.attrs:
@@ -204,7 +210,7 @@ def main():
             g = gtype.get(int(paddr, 16))
             if g is not None and "+" not in pname:
                 decl = re.sub(r"\b[us]128 ", "u128_t ", pr.typename(g, rsym))
-                externs.append(f"extern {decl};")
+                externs.append((rsym, f"extern {decl};"))
     ctx = ROOT / "build" / "m2c" / "proto_ctx.h"
     ctx.parent.mkdir(parents=True, exist_ok=True)
     # m2c's C parser takes no preprocessor lines or attributes
@@ -212,8 +218,8 @@ def main():
     plain = plain.replace(" __attribute__((aligned(16)))", "")
     # `long` is 64-bit on the EE; m2c assumes 32
     plain = re.sub(r"(?<!long )\blong\b(?! long)", "long long", plain)
-    ctx.write_text(dwarf1_types_prelude() + plain + "\n" + "\n".join(sorted(set(protos))) + "\n"
-                   + "\n".join(externs) + "\n")
+    ctx.write_text(dwarf1_types_prelude() + plain + "\n" + "\n".join(p for _, p in sorted(set(protos))) + "\n"
+                   + "\n".join(e for _, e in externs) + "\n")
     # locals by register (m2c names its temporaries after registers) and struct fields
     import json
     locs = {}
@@ -250,9 +256,9 @@ def main():
     # pieces for tools/m2c_batch.py, which builds a context per function
     (ctx.parent / "proto_types.h").write_text(plain + "\n")
     (ctx.parent / "proto_protos.txt").write_text(
-        "".join(f"{re.search(r'(func_[0-9A-F]{8})\(', p)[1]} {p}\n" for p in sorted(set(protos))))
+        "".join(f"{n} {p}\n" for n, p in sorted(set(protos))))
     (ctx.parent / "proto_externs.txt").write_text(
-        "".join(f"{re.search(r'(D_[0-9A-F]{8})', e)[1]} {e}\n" for e in externs))
+        "".join(f"{n} {e}\n" for n, e in externs))
     print(f"{len(order)} types, {len(set(protos))} prototypes, {len(externs)} typed globals")
 
 

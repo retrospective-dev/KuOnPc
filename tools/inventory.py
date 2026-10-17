@@ -56,7 +56,7 @@ def main():
             body.pop()
         addr = int(instrs[0][0], 16) if instrs else 0
         strings = []
-        for m in re.finditer(r"%lo\((D_[0-9A-F]{8})\)", text):
+        for m in re.finditer(r"%lo\(([A-Za-z_]\w*)\)", text):
             s = cstr(int(m.group(1)[2:], 16))
             if s and s not in strings:
                 strings.append(s)

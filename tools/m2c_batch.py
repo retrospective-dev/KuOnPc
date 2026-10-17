@@ -41,7 +41,7 @@ typedef signed long long s64;
 typedef unsigned long long u64;
 typedef float f32;
 """
-DEF = re.compile(r"^([A-Za-z_][\w \*]*?)\s*\b(func_[0-9A-F]{8})\(([^)]*)\)\s*\{", re.M)
+DEF = re.compile(r"^([A-Za-z_][\w \*]*?)\s*\b([A-Za-z_]\w*)\(([^)]*)\)\s*\{", re.M)
 
 FIELD = re.compile(r"M2C_FIELD\((\w+), ([\w ]+?) \*, (-?0x[0-9A-Fa-f]+|-?\d+)\)")
 
@@ -50,7 +50,7 @@ def num(s):
     return int(s, 0)
 
 
-TAIL = re.compile(r"^(\s+/\*[^*]*\*/\s+j\s+func_\w+\n)(\s+/\*[^*]*\*/\s+[^\n]*\n)", re.M)
+TAIL = re.compile(r"^(\s+/\*[^*]*\*/\s+j\s+[A-Za-z_]\w*\n)(\s+/\*[^*]*\*/\s+[^\n]*\n)", re.M)
 
 
 JR = re.compile(r"^(\s+/\*[^*]*\*/\s+)jr(\s+)(\$(?!ra\b)\w+)\n(\s+/\*[^*]*\*/\s+[^\n]*\n)", re.M)
@@ -80,6 +80,15 @@ _SIG_CACHE = {}
 
 
 PROTO_DIR = ROOT / "build" / "m2c"
+
+
+def func_names():
+    """Every function symbol: game functions (named or func_) and callees with signatures."""
+    if "funcs" not in _SIG_CACHE:
+        names = set((ROOT / "game_order.txt").read_text().split()) | set(load_sigs())
+        names |= set(proto_info()[1])
+        _SIG_CACHE["funcs"] = names
+    return _SIG_CACHE["funcs"]
 
 
 def proto_info():
@@ -174,12 +183,14 @@ def load_sigs():
 def add_protos(src, name, sigs):
     """Declare callees that m2c took from the context (it doesn't print those)."""
     # functions used by address come out as `extern T func_X;`: declare them as functions
-    src = re.sub(r"^extern [\w \*]+? (func_[0-9A-F]{8});\n",
-                 lambda m: (sigs.get(m[1], f"void {m[1]}();")) + "\n", src, flags=re.M)
+    funcs = func_names()
     _, known, externs = proto_info()
+    src = re.sub(r"^extern [\w \*]+? (\w+);\n",
+                 lambda m: (known.get(m[1]) or sigs.get(m[1], f"void {m[1]}();")) + "\n" if m[1] in funcs else m[0],
+                 src, flags=re.M)
     head, sep, body = src.partition(f"{name}(")
-    declared = set(re.findall(r"\b(func_[0-9A-F]{8})\(", head))
-    used = sorted(set(re.findall(r"\b(func_[0-9A-F]{8})\b", body)) - declared - {name})
+    declared = set(re.findall(r"\b(\w+)\(", head)) & funcs
+    used = sorted((set(re.findall(r"\b(\w+)\b", body)) & funcs) - declared - {name})
     protos = []
     for f in used:
         if f in known:
@@ -189,8 +200,8 @@ def add_protos(src, name, sigs):
         else:
             return None
     # globals m2c took from the context
-    have = set(re.findall(r"\b(D_[0-9A-F]{8})\b", head))
-    for g in sorted(set(re.findall(r"\b(D_[0-9A-F]{8})\b", body)) - have):
+    have = set(re.findall(r"\b(\w+)\b", head))
+    for g in sorted((set(re.findall(r"\b(\w+)\b", body)) & set(externs)) - have):
         if g in externs:
             protos.append(externs[g])
     if not protos:
@@ -210,7 +221,7 @@ def gather(jobs):
                 sigs[n] = f"{' '.join(ret.split())} {n}({params.strip() or 'void'});"
     order = (ROOT / "game_order.txt").read_text().split()
     todo = [n for n in order if n not in sigs]
-    sdk = re.findall(r"^(\w[\w \*]*?)\s*\b(func_[0-9A-F]{8})\(([^)]*)\);",
+    sdk = re.findall(r"^(\w[\w \*]*?)\s*\b(\w+)\(([^)]*)\);",
                      (ROOT / "include" / "common.h").read_text(), re.M)
 
     def one(n, ctx):
@@ -246,7 +257,7 @@ def fix_globals(src, name):
     threshold (8 bytes); MWCC would use $gp for a scalar extern, so declare them as arrays
     and use element 0."""
     asm = (ROOT / "asm" / "game" / f"{name}.s").read_text()
-    far = set(re.findall(r"%hi\((D_[0-9A-F]{8})\)", asm))
+    far = set(re.findall(r"%hi\(([A-Za-z_]\w*)\)", asm)) - func_names()
     for g in far:
         decl = re.search(rf"^extern ([\w \*]+?) ?\b{g};$", src, re.M)
         if not decl:
@@ -373,13 +384,13 @@ def byte_pointers(src):
     gets an s32 load (tools/typefix.py adjusts the width)."""
     ptrs = {}
     for m in re.finditer(r"(?<![\w*])(s8|u8|s16|u16|s32|u32) \*(\w+)(?=[;,)])", src):
-        if not m[2].startswith(("func_", "D_")):
+        if re.match(r"(temp|var|arg|sp)", m[2]):
             ptrs[m[2]] = m[1]
     not_decl = "(?<!s8 )(?<!u8 )(?<!s16 )(?<!u16 )(?<!s32 )(?<!u32 )"
     for v, t in ptrs.items():
         src = re.sub(rf"{not_decl}(?<![\w)\]])\*{v}\b", f"*({t} *){v}", src)
         src = re.sub(rf"(?<![\w*])(s8|u8|s16|u16|s32|u32) \*{v}(?=[;,)])", f"u8 *{v}", src)
-    src = re.sub(r"(?<![\w)\]])\*\((&D_[0-9A-F]{8})", r"*(s32 *)(\1", src)
+    src = re.sub(r"(?<![\w)\]])\*\((&(?!(?:temp|var|arg|sp)\w)[A-Za-z_]\w*)", r"*(s32 *)(\1", src)
     return src
 
 
@@ -478,7 +489,7 @@ def autocast(name, text, rounds=12):
             ptrs = set(PTR_DECL.findall(text))
             lhs, eq, rhs = re.match(r"^(\s*(?:[^=!<>]+?) = )?(.*)$", line).group(1, 1, 2)
             lhs = lhs or ""
-            rhs2 = re.sub(r"(?<![\w>.*])(&D_[0-9A-F]{8}\[0\])", r"(s32) \1", rhs)
+            rhs2 = re.sub(r"(?<![\w>.*])(&(?!(?:temp|var|arg|sp)\w)[A-Za-z_]\w*\[0\])", r"(s32) \1", rhs)
             for v in ptrs:
                 rhs2 = re.sub(rf"(?<![\w>.*(&]){v}\b(?!\s*(?:->|\[|\)\s*\())", f"(s32) {v}", rhs2)
             new = lhs + rhs2
@@ -573,7 +584,8 @@ def main():
     if a.limit:
         todo = todo[: a.limit]
     # build the shared symbol script once before going parallel
-    subprocess.run([PY, "tools/diff.py", "-q", "func_0012E740"], cwd=ROOT, capture_output=True)
+    first = min((ROOT / "src" / "game").glob("*.c")).stem
+    subprocess.run([PY, "tools/diff.py", "-q", first], cwd=ROOT, capture_output=True)
     matched = 0
     report = []
     with ThreadPoolExecutor(a.jobs) as ex:

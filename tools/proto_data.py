@@ -83,7 +83,7 @@ def main():
         ins = re.findall(r"\*/\s+(\S[^\n]*)", text)
         prefs = proto_refs(start[pname], len(ins))
         for k, t in enumerate(ins):
-            sm = re.search(r"%(?:lo|gp_rel)\((D_[0-9A-F]{8})(?: \+ (0x[0-9A-F]+))?\)", t)
+            sm = re.search(r"%(?:lo|gp_rel)\(([A-Za-z_]\w*)(?: \+ (0x[0-9A-F]+))?\)", t)
             if sm and k in prefs:
                 add = int(sm[2], 16) if sm[2] else 0
                 votes[sm[1]][prefs[k] - add] += 1
