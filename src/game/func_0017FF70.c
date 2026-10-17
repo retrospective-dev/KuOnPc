@@ -1,5 +1,4 @@
 #include "common.h"
-/* mwcc_pad: any */
 
 typedef struct {
     /* 0x000 */ u8 unk0[0x4];

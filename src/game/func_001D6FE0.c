@@ -1,5 +1,4 @@
 #include "common.h"
-/* mwcc_pad: noternary */
 
 extern s32 *D_0025E0A0;
 

@@ -1,5 +1,4 @@
 #include "common.h"
-/* mwcc_pad: noternary */
 
 s32 func_00187940(s32 arg0);
 s32 func_001DFF20(s32 arg0) {

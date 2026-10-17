@@ -1,5 +1,4 @@
 #include "common.h"
-/* mwcc_pad: unsteal */
 
 s32 func_0017C280(u8 *arg0);
 s32 func_0017E6E0(u8 *arg0);

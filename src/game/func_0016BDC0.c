@@ -1,5 +1,4 @@
 #include "common.h"
-/* mwcc_pad: noternary */
 
 void func_0014B580(s32 arg0);
 extern u8 D_009BB7F8[];

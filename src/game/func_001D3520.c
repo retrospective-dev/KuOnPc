@@ -1,5 +1,4 @@
 #include "common.h"
-/* mwcc_pad: noternary */
 #include "m2c_macros.h"
 
 s32 func_001D46A0(u8 *arg0, s32 arg1);
