@@ -308,6 +308,64 @@ def check(name, text):
     return int(m[1]) if m else "compile error"
 
 
+MWCC = [str(ROOT / "tools" / "wibo"), str(ROOT / "tools" / "compilers" / "mwcps2-3.0.3-020716" / "mwccps2.exe"),
+        "-c", "-O4", "-relax_pointers", "-nostdinc", "-Iinclude"]
+PTR_DECL = re.compile(r"\b[\w]+ \*+(\w+)\s*[;,)=]")
+
+
+def compile_error(name, text):
+    """First MWCC error as (line number, message), or None if the draft compiles."""
+    trial = ROOT / "build" / "m2c" / "try" / f"{name}.cc.c"
+    trial.parent.mkdir(parents=True, exist_ok=True)
+    trial.write_text(text)
+    obj = trial.with_suffix(".o")
+    r = subprocess.run([*MWCC, str(trial), "-o", str(obj)], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode == 0:
+        return None
+    out = r.stdout + r.stderr
+    m = re.search(r"#\s+(\d+): .*\n#\s+Error:.*\n((?:#   .*\n?)+)", out)
+    if not m:
+        return (0, out)
+    return int(m[1]), " ".join(l[1:].strip() for l in m[2].splitlines())
+
+
+def autocast(name, text, rounds=12):
+    """Make an m2c draft acceptable to MWCC's stricter typing by adding casts where it
+    complains: `x = (T) (...)` for implicit conversions, `(s32)` on pointer operands of
+    arithmetic and comparisons. m2c already means byte arithmetic, so the code is the same."""
+    for _ in range(rounds):
+        err = compile_error(name, text)
+        if err is None:
+            return text
+        line_no, msg = err
+        lines = text.split("\n")
+        if not 0 < line_no <= len(lines):
+            return None
+        line = lines[line_no - 1]
+        new = line
+        conv = re.search(r"illegal implicit conversion from '[^']*' to '([^']*)'", msg)
+        if conv:
+            t = conv[1]
+            if m := re.match(r"^(\s*)(.+?) = (.+);$", line):
+                if " == " not in m[2]:
+                    new = f"{m[1]}{m[2]} = ({t}) ({m[3]});"
+            elif m := re.match(r"^(\s*)return (.+);$", line):
+                new = f"{m[1]}return ({t}) ({m[2]});"
+        elif "illegal operand" in msg:
+            ptrs = set(PTR_DECL.findall(text))
+            lhs, eq, rhs = re.match(r"^(\s*(?:[^=!<>]+?) = )?(.*)$", line).group(1, 1, 2)
+            lhs = lhs or ""
+            rhs2 = re.sub(r"(?<![\w>.*])(&D_[0-9A-F]{8}\[0\])", r"(s32) \1", rhs)
+            for v in ptrs:
+                rhs2 = re.sub(rf"(?<![\w>.*(&]){v}\b(?!\s*(?:->|\[|\)\s*\())", f"(s32) {v}", rhs2)
+            new = lhs + rhs2
+        if new == line:
+            return None
+        lines[line_no - 1] = new
+        text = "\n".join(lines)
+    return None
+
+
 PAD_RULES = ["", "/* mwcc_pad: any */\n", "/* mwcc_pad: off */\n"]
 
 
@@ -346,6 +404,8 @@ def attempt(name, sigs):
             if text in seen:
                 continue
             seen.add(text)
+            if compile_error(name, text) is not None:
+                text = autocast(name, text) or text
             res = check_padded(name, text)
             if res == 0:
                 return name, " ".join(opts) or "default", None
