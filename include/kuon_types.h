@@ -140,8 +140,8 @@ typedef struct Chcr Chcr;
 typedef struct ChVif1 ChVif1;
 typedef struct Child Child;
 typedef struct ChunkHead ChunkHead;
-typedef struct Prim Prim;
 typedef struct Rgbaq Rgbaq;
+typedef struct Prim Prim;
 typedef struct Test1 Test1;
 typedef struct Xyz2a Xyz2a;
 typedef struct Clear0 Clear0;
@@ -150,8 +150,8 @@ typedef struct Color Color;
 typedef struct CommonParam CommonParam;
 typedef struct Create Create;
 typedef struct Create2 Create2;
-typedef struct Func Func;
 typedef struct Key Key;
+typedef struct Func Func;
 typedef struct Ctrl Ctrl;
 typedef struct CtrlGS CtrlGS;
 typedef struct CurOT CurOT;
@@ -162,23 +162,23 @@ typedef struct Damage Damage;
 typedef struct DarkFilterMng DarkFilterMng;
 typedef struct Data Data;
 typedef struct Data2 Data2;
-typedef struct Zbuf1 Zbuf1;
-typedef struct Prmodecont Prmodecont;
 typedef struct Scissor1 Scissor1;
+typedef struct Prmodecont Prmodecont;
+typedef struct Zbuf1 Zbuf1;
+typedef struct Xyoffset1 Xyoffset1;
 typedef struct Frame1 Frame1;
 typedef struct Dthe Dthe;
-typedef struct Xyoffset1 Xyoffset1;
 typedef struct Draw0 Draw0;
 typedef struct Giftag0 Giftag0;
 typedef struct Display Display;
 typedef struct Smode2 Smode2;
-typedef struct Dispfb Dispfb;
 typedef struct Pmode Pmode;
+typedef struct Dispfb Dispfb;
 typedef struct Disp Disp;
 typedef struct DbBuf DbBuf;
-typedef struct TexScroll TexScroll;
 typedef struct DizzyEffect DizzyEffect;
 typedef struct GlareInfo GlareInfo;
+typedef struct TexScroll TexScroll;
 typedef struct DebugParam DebugParam;
 typedef struct DebugSystem DebugSystem;
 typedef struct Dice Dice;
@@ -277,8 +277,8 @@ typedef struct GHitLine GHitLine;
 typedef struct GKomaInfo GKomaInfo;
 typedef struct Maplist Maplist;
 typedef struct GMainTblMap GMainTblMap;
-typedef struct Listener Listener;
 typedef struct SqSong SqSong;
+typedef struct Listener Listener;
 typedef struct Param3 Param3;
 typedef struct G_pSndMng G_pSndMng;
 typedef struct G_voice G_voice;
@@ -287,9 +287,9 @@ typedef struct GameSt GameSt;
 typedef struct Glyph Glyph;
 typedef struct GmInfo GmInfo;
 typedef struct GodShelf GodShelf;
-typedef struct Trxreg Trxreg;
 typedef struct Trxpos Trxpos;
 typedef struct Trxdir Trxdir;
+typedef struct Trxreg Trxreg;
 typedef struct Gs_simage Gs_simage;
 typedef struct Head Head;
 typedef struct HeadParam HeadParam;
@@ -322,11 +322,11 @@ typedef struct Store_data Store_data;
 typedef struct KnMenuMng KnMenuMng;
 typedef struct KnMenuModelMng KnMenuModelMng;
 typedef struct KnMenuWindMng KnMenuWindMng;
-typedef struct MsgFileMng MsgFileMng;
 typedef struct Msg_data_flag Msg_data_flag;
 typedef struct Msg_data Msg_data;
 typedef struct ListMng ListMng;
 typedef struct MsgMng MsgMng;
+typedef struct MsgFileMng MsgFileMng;
 typedef struct KnMsgMng KnMsgMng;
 typedef struct Krdp Krdp;
 typedef struct Li Li;
@@ -482,8 +482,8 @@ typedef struct S_aItemData S_aItemData;
 typedef struct S_aItemNum S_aItemNum;
 typedef struct S_aSeGroup S_aSeGroup;
 typedef struct S_dbgmsg S_dbgmsg;
-typedef struct Sqp Sqp;
 typedef struct Sep Sep;
+typedef struct Sqp Sqp;
 typedef struct S_esmData S_esmData;
 typedef struct S_fire_attach S_fire_attach;
 typedef struct Setting Setting;
@@ -1141,6 +1141,14 @@ struct ChunkHead { /* 0x10 */
     /*   0xc */ unsigned int ChunkSize;
 };
 
+struct Rgbaq { /* 0x8 */
+    /*   0x0 */ unsigned int R : 8;
+    /*   0x0 */ unsigned int G : 8;
+    /*   0x0 */ unsigned int B : 8;
+    /*   0x0 */ unsigned int A : 8;
+    /*   0x4 */ float Q;
+};
+
 struct Prim { /* 0x8 */
     /*   0x0 */ unsigned long PRIM : 3;
     /*   0x0 */ unsigned long IIP : 1;
@@ -1152,14 +1160,6 @@ struct Prim { /* 0x8 */
     /*   0x0 */ unsigned long CTXT : 1;
     /*   0x0 */ unsigned long FIX : 1;
     /*   0x0 */ unsigned long pad11 : 53;
-};
-
-struct Rgbaq { /* 0x8 */
-    /*   0x0 */ unsigned int R : 8;
-    /*   0x0 */ unsigned int G : 8;
-    /*   0x0 */ unsigned int B : 8;
-    /*   0x0 */ unsigned int A : 8;
-    /*   0x4 */ float Q;
 };
 
 struct Test1 { /* 0x8 */
@@ -1240,6 +1240,15 @@ struct Create2 { /* 0x60 */
     /*  0x51 */ unsigned char bWallL;
 };
 
+struct Key { /* 0x10 */
+    /*   0x0 */ Pad *lpPad;
+    /*   0x4 */ char L3H;
+    /*   0x5 */ char L3V;
+    /*   0x6 */ char R3H;
+    /*   0x7 */ char R3V;
+    /*   0x8 */ unsigned int unused[2];
+};
+
 struct Func { /* 0x1A0 */
     /*   0x0 */ void (*ThkFunc[32])();
     /*  0x80 */ void (*ActFunc[32])();
@@ -1254,15 +1263,6 @@ struct Func { /* 0x1A0 */
     /* 0x190 */ void (*DramaStartFunc)();
     /* 0x194 */ void (*DramaEndFunc)();
     /* 0x198 */ int unused[2];
-};
-
-struct Key { /* 0x10 */
-    /*   0x0 */ Pad *lpPad;
-    /*   0x4 */ char L3H;
-    /*   0x5 */ char L3V;
-    /*   0x6 */ char R3H;
-    /*   0x7 */ char R3V;
-    /*   0x8 */ unsigned int unused[2];
 };
 
 struct Ctrl { /* 0x260 */
@@ -1384,20 +1384,6 @@ struct Data2 { /* 0x50 */
     /*  0x10 */ Attach aAttach[2];
 };
 
-struct Zbuf1 { /* 0x8 */
-    /*   0x0 */ unsigned long ZBP : 9;
-    /*   0x0 */ unsigned long pad09 : 15;
-    /*   0x0 */ unsigned long PSM : 4;
-    /*   0x0 */ unsigned long pad28 : 4;
-    /*   0x0 */ unsigned long ZMSK : 1;
-    /*   0x0 */ unsigned long pad33 : 31;
-};
-
-struct Prmodecont { /* 0x8 */
-    /*   0x0 */ unsigned long AC : 1;
-    /*   0x0 */ unsigned long pad01 : 63;
-};
-
 struct Scissor1 { /* 0x8 */
     /*   0x0 */ unsigned long SCAX0 : 11;
     /*   0x0 */ unsigned long pad11 : 5;
@@ -1407,6 +1393,27 @@ struct Scissor1 { /* 0x8 */
     /*   0x0 */ unsigned long pad43 : 5;
     /*   0x0 */ unsigned long SCAY1 : 11;
     /*   0x0 */ unsigned long pad59 : 5;
+};
+
+struct Prmodecont { /* 0x8 */
+    /*   0x0 */ unsigned long AC : 1;
+    /*   0x0 */ unsigned long pad01 : 63;
+};
+
+struct Zbuf1 { /* 0x8 */
+    /*   0x0 */ unsigned long ZBP : 9;
+    /*   0x0 */ unsigned long pad09 : 15;
+    /*   0x0 */ unsigned long PSM : 4;
+    /*   0x0 */ unsigned long pad28 : 4;
+    /*   0x0 */ unsigned long ZMSK : 1;
+    /*   0x0 */ unsigned long pad33 : 31;
+};
+
+struct Xyoffset1 { /* 0x8 */
+    /*   0x0 */ unsigned long OFX : 16;
+    /*   0x0 */ unsigned long pad16 : 16;
+    /*   0x0 */ unsigned long OFY : 16;
+    /*   0x0 */ unsigned long pad48 : 16;
 };
 
 struct Frame1 { /* 0x8 */
@@ -1422,13 +1429,6 @@ struct Frame1 { /* 0x8 */
 struct Dthe { /* 0x8 */
     /*   0x0 */ unsigned long DTHE : 1;
     /*   0x0 */ unsigned long pad01 : 63;
-};
-
-struct Xyoffset1 { /* 0x8 */
-    /*   0x0 */ unsigned long OFX : 16;
-    /*   0x0 */ unsigned long pad16 : 16;
-    /*   0x0 */ unsigned long OFY : 16;
-    /*   0x0 */ unsigned long pad48 : 16;
 };
 
 struct Draw0 { /* 0x80 */
@@ -1496,16 +1496,6 @@ struct Smode2 { /* 0x8 */
     /*   0x4 */ unsigned int p1;
 };
 
-struct Dispfb { /* 0x8 */
-    /*   0x0 */ unsigned int FBP : 9;
-    /*   0x0 */ unsigned int FBW : 6;
-    /*   0x0 */ unsigned int PSM : 5;
-    /*   0x0 */ unsigned int p0 : 12;
-    /*   0x4 */ unsigned int DBX : 11;
-    /*   0x4 */ unsigned int DBY : 11;
-    /*   0x4 */ unsigned int p1 : 10;
-};
-
 struct Pmode { /* 0x8 */
     /*   0x0 */ unsigned int EN1 : 1;
     /*   0x0 */ unsigned int EN2 : 1;
@@ -1516,6 +1506,16 @@ struct Pmode { /* 0x8 */
     /*   0x0 */ unsigned int ALP : 8;
     /*   0x0 */ unsigned int p0 : 16;
     /*   0x4 */ unsigned int p1;
+};
+
+struct Dispfb { /* 0x8 */
+    /*   0x0 */ unsigned int FBP : 9;
+    /*   0x0 */ unsigned int FBW : 6;
+    /*   0x0 */ unsigned int PSM : 5;
+    /*   0x0 */ unsigned int p0 : 12;
+    /*   0x4 */ unsigned int DBX : 11;
+    /*   0x4 */ unsigned int DBY : 11;
+    /*   0x4 */ unsigned int p1 : 10;
 };
 
 struct Disp { /* 0x28 */
@@ -1534,16 +1534,6 @@ struct DbBuf { /* 0x230 */
     /* 0x140 */ Giftag0 giftag1;
     /* 0x150 */ Draw0 draw1;
     /* 0x1d0 */ Clear0 clear1;
-};
-
-struct TexScroll { /* 0x2C */
-    /*   0x0 */ unsigned char Type[2];
-    /*   0x2 */ unsigned char Wave[2];
-    /*   0x4 */ float Speed[2];
-    /*   0xc */ float Amplitude[2];
-    /*  0x14 */ float SinSpeed[2];
-    /*  0x1c */ float SinAmplitude[2];
-    /*  0x24 */ float SinWavelength[2];
 };
 
 struct DizzyEffect { /* 0x28 */
@@ -1570,6 +1560,16 @@ struct DizzyEffect { /* 0x28 */
 struct GlareInfo { /* 0x4 */
     /*   0x0 */ unsigned char Threshold[3];
     /*   0x3 */ unsigned char Rate;
+};
+
+struct TexScroll { /* 0x2C */
+    /*   0x0 */ unsigned char Type[2];
+    /*   0x2 */ unsigned char Wave[2];
+    /*   0x4 */ float Speed[2];
+    /*   0xc */ float Amplitude[2];
+    /*  0x14 */ float SinSpeed[2];
+    /*  0x1c */ float SinAmplitude[2];
+    /*  0x24 */ float SinWavelength[2];
 };
 
 struct DebugParam { /* 0x830 */
@@ -2569,12 +2569,6 @@ struct GMainTblMap { /* 0x1D0 */
     /*  0x40 */ float kposlist[25][4];
 };
 
-struct Listener { /* 0xC */
-    /*   0x0 */ float (*fvListenerPosPtr)[4];
-    /*   0x4 */ float (*fvListenerAngPtr)[4];
-    /*   0x8 */ float (*fmListenerMatPtr)[4][4];
-};
-
 struct SqSong { /* 0x10 */
     /*   0x0 */ short sCalcedVol;
     /*   0x2 */ char bid;
@@ -2583,6 +2577,12 @@ struct SqSong { /* 0x10 */
     /*   0x5 */ char reserv[3];
     /*   0x8 */ int sq_fade;
     /*   0xc */ int sq_vol;
+};
+
+struct Listener { /* 0xC */
+    /*   0x0 */ float (*fvListenerPosPtr)[4];
+    /*   0x4 */ float (*fvListenerAngPtr)[4];
+    /*   0x8 */ float (*fmListenerMatPtr)[4][4];
 };
 
 struct Param3 { /* 0x20 */
@@ -2699,13 +2699,6 @@ struct GodShelf { /* 0x10 */
     /*   0x4 */ unsigned char Box[12];
 };
 
-struct Trxreg { /* 0x8 */
-    /*   0x0 */ unsigned long RRW : 12;
-    /*   0x0 */ unsigned long pad12 : 20;
-    /*   0x0 */ unsigned long RRH : 12;
-    /*   0x0 */ unsigned long pad44 : 20;
-};
-
 struct Trxpos { /* 0x8 */
     /*   0x0 */ unsigned long SSAX : 11;
     /*   0x0 */ unsigned long pad11 : 5;
@@ -2721,6 +2714,13 @@ struct Trxpos { /* 0x8 */
 struct Trxdir { /* 0x8 */
     /*   0x0 */ unsigned long XDR : 2;
     /*   0x0 */ unsigned long pad02 : 62;
+};
+
+struct Trxreg { /* 0x8 */
+    /*   0x0 */ unsigned long RRW : 12;
+    /*   0x0 */ unsigned long pad12 : 20;
+    /*   0x0 */ unsigned long RRH : 12;
+    /*   0x0 */ unsigned long pad44 : 20;
 };
 
 struct Gs_simage { /* 0x70 */
@@ -3015,14 +3015,6 @@ struct KnMenuWindMng { /* 0x30 */
     /*  0x20 */ KMM_Data wind_data;
 };
 
-struct MsgFileMng { /* 0x30 */
-    /*   0x0 */ Mng_state mng_state;
-    /*  0x20 */ unsigned int msg_file_num;
-    /*  0x24 */ unsigned char **pMsgFileBuf;
-    /*  0x28 */ unsigned char *pTexBuf;
-    /*  0x2c */ int tex_id;
-};
-
 struct Msg_data_flag { /* 0x4 */
     /*   0x0 */ unsigned int wait_until_exec_wait : 1;
     /*   0x0 */ unsigned int overwrite : 1;
@@ -3081,6 +3073,14 @@ struct MsgMng { /* 0x210 */
     /* 0x100 */ int select_num;
     /* 0x104 */ unsigned short *aSelectPtr[64];
     /* 0x204 */ int msg_clear_counter;
+};
+
+struct MsgFileMng { /* 0x30 */
+    /*   0x0 */ Mng_state mng_state;
+    /*  0x20 */ unsigned int msg_file_num;
+    /*  0x24 */ unsigned char **pMsgFileBuf;
+    /*  0x28 */ unsigned char *pTexBuf;
+    /*  0x2c */ int tex_id;
 };
 
 struct KnMsgMng { /* 0x260 */
@@ -4866,18 +4866,18 @@ struct S_dbgmsg { /* 0x208 */
     /* 0x204 */ unsigned int line;
 };
 
-struct Sqp { /* 0x10 */
-    /*   0x0 */ void *iopp;
-    /*   0x4 */ int size;
-    /*   0x8 */ int bt_idx;
-    /*   0xc */ int midi_port;
-};
-
 struct Sep { /* 0x4 */
     /*   0x0 */ char bt_idx;
     /*   0x1 */ char ch;
     /*   0x2 */ char key;
     /*   0x3 */ char use;
+};
+
+struct Sqp { /* 0x10 */
+    /*   0x0 */ void *iopp;
+    /*   0x4 */ int size;
+    /*   0x8 */ int bt_idx;
+    /*   0xc */ int midi_port;
 };
 
 struct S_esmData { /* 0x410 */
