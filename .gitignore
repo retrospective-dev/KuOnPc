@@ -18,3 +18,4 @@ tools/compilers/
 
 __pycache__/
 *.pyc
+tools/permuter_src/
