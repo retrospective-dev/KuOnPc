@@ -190,6 +190,9 @@ def clean(src):
     """Generic fixes so m2c output compiles with MWCC; None if it can't be used."""
     if re.search(r"M2C_(ERROR|BITWISE|STRUCT_COPY|LWL|LWR|SWL|SWR|CARRY|OVERFLOW|ACCESS|UNALIGNED|MEMBER)", src):
         return None
+    # m2c does byte arithmetic on untyped data and pointers (`&D_X + 8`, `ptr + 4`), so
+    # untyped data is u8 and untyped pointers are u8 *; other unknowns are plain ints
+    src = re.sub(r"^extern M2C_UNK (\*?)", r"extern u8 \1", src, flags=re.M)
     src = src.replace("M2C_UNK", "s32")
     # m2c's own warnings are comments; drop trailing per-line comments it adds on prototypes
     src = re.sub(r"\s*/\* extern \*/", "", src)
@@ -245,9 +248,14 @@ def render(name, src):
     """Yield candidate C files for one m2c draft (struct form first, then raw macro form)."""
     s = structify(name, src)
     if s is not None:
-        yield '#include "common.h"\n\n' + s.strip() + "\n"
+        yield '#include "common.h"\n\n' + bytes_ptr(s).strip() + "\n"
     if "M2C_FIELD" in src:
-        yield '#include "common.h"\n#include "m2c_macros.h"\n\n' + src.strip() + "\n"
+        yield '#include "common.h"\n#include "m2c_macros.h"\n\n' + bytes_ptr(src).strip() + "\n"
+
+
+def bytes_ptr(src):
+    """MWCC rejects arithmetic on void *; m2c means byte arithmetic, so use u8 *."""
+    return re.sub(r"\bvoid \*", "u8 *", src)
 
 
 def check(name, text):
@@ -266,6 +274,24 @@ def check(name, text):
         return "emits data"
     m = re.search(r"(\d+) of (\d+) differ", r.stdout)
     return int(m[1]) if m else "compile error"
+
+
+PAD_RULES = ["", "/* mwcc_pad: any */\n", "/* mwcc_pad: off */\n"]
+
+
+def check_padded(name, text):
+    """check() with each branch-target padding rule of tools/mwcc_pad.py; best result."""
+    head, _, body = text.partition("\n")
+    best = None
+    for rule in PAD_RULES:
+        res = check(name, head + "\n" + rule + body if rule else text)
+        if res == 0:
+            return 0
+        if isinstance(res, int) and (best is None or not isinstance(best, int) or res < best):
+            best = res
+        elif best is None:
+            best = res
+    return best
 
 
 def attempt(name, sigs):
@@ -288,7 +314,7 @@ def attempt(name, sigs):
             if text in seen:
                 continue
             seen.add(text)
-            res = check(name, text)
+            res = check_padded(name, text)
             if res == 0:
                 return name, " ".join(opts) or "default", None
             if isinstance(res, int) and (not isinstance(best[0], int) or res < best[0]):

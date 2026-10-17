@@ -1,4 +1,5 @@
 #include "common.h"
+/* mwcc_pad: any */
 
 extern s32 D_0025E4D8;
 extern s32 D_0025E4DC;

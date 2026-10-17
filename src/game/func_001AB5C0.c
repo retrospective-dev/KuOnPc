@@ -1,4 +1,5 @@
 #include "common.h"
+/* mwcc_pad: any */
 
 extern s8 D_00A43690[];
 
