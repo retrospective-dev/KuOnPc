@@ -60,13 +60,13 @@ The full plan is in [`SPEC.md`](SPEC.md).
 
 | | |
 |---|---|
-| 🖥️ **Display** | Any resolution up to 4K, 16:9 / 21:9 with correct FOV and HUD, 4:3 option, windowed / borderless / fullscreen |
-| 🎞️ **Frame rate** | 60 fps or more with the original 50 Hz game speed |
-| 🎮 **Input** | XInput / SDL controllers, keyboard and mouse, rebindable |
-| 🔊 **Audio** | Original music, sound and voice, with volume sliders |
-| 💾 **Saves** | Memory card replaced by save files in your user folder |
-| 🌐 **Languages** | English, French and German from the PAL disc |
-| 🎬 **Movies** | Original cutscenes, in game |
+| **Display** | Any resolution up to 4K, 16:9 / 21:9 with correct FOV and HUD, 4:3 option, windowed / borderless / fullscreen |
+| **Frame rate** | 60 fps or more with the original 50 Hz game speed |
+| **Input** | XInput / SDL controllers, keyboard and mouse, rebindable |
+| **Audio** | Original music, sound and voice, with volume sliders |
+| **Saves** | Memory card replaced by save files in your user folder |
+| **Languages** | English, French and German from the PAL disc |
+| **Movies** | Original cutscenes, in game |
 
 Everything defaults to the original experience; enhancements can be turned off.
 
@@ -102,7 +102,7 @@ python3 tools/diff.py func_0014A670      # compile one function and diff it agai
 python3 tools/m2c_batch.py --bucket tiny # draft functions automatically, keep exact matches
 ```
 
-Matching rules, compiler quirks and the agent workflow are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Design
+Matching rules, compiler quirks and the workflow are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Design
 decisions are logged in [`docs/decisions.md`](docs/decisions.md).
 
 ### Tooling
