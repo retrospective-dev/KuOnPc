@@ -3,6 +3,12 @@
 Read `SPEC.md` first: it has the goal (native PC port), the phases and the hard rules.
 This file is the hands-on part: how to build, how to match, and what has been learned.
 
+## Commits
+
+All commits are credited to `retrospective-dev <retro.spectiveshared@gmail.com>`, with no
+co-author or session-link trailers. `tools/setup.sh` turns on `tools/githooks/`, which enforces
+both; in a checkout where setup hasn't run, use `git config core.hooksPath tools/githooks`.
+
 ## Setup and build
 
 ```

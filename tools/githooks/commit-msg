@@ -1,0 +1,5 @@
+#!/bin/sh
+# Drop co-author and session-link trailers added by tools; commits are credited to the owner only.
+sed -i -E '/^Co-Authored-By: /Id; /^[A-Za-z]+-Session: https?:/d' "$1"
+# remove trailing blank lines left behind
+printf '%s\n' "$(cat "$1")" > "$1"

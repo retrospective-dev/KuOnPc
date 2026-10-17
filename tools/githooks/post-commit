@@ -1,0 +1,9 @@
+#!/bin/sh
+# Every commit in this repo is credited to the project owner (author and committer).
+NAME="retrospective-dev"
+EMAIL="retro.spectiveshared@gmail.com"
+[ -n "$KUON_REIDENT" ] && exit 0
+if [ "$(git log -1 --format='%an <%ae>|%cn <%ce>')" != "$NAME <$EMAIL>|$NAME <$EMAIL>" ]; then
+    KUON_REIDENT=1 GIT_COMMITTER_NAME="$NAME" GIT_COMMITTER_EMAIL="$EMAIL" \
+        git commit --amend --no-edit --no-verify --quiet --author="$NAME <$EMAIL>"
+fi

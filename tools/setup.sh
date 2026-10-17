@@ -16,6 +16,9 @@ if [ "$actual" != "$EXPECTED_SHA1" ]; then
   exit 1
 fi
 
+echo "== git hooks (commit identity and message rules, see CONTRIBUTING.md)"
+git config core.hooksPath tools/githooks
+
 echo "== system packages"
 if command -v apt-get >/dev/null; then
   sudo apt-get install -y binutils-mips-linux-gnu python3-pip make
