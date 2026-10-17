@@ -202,6 +202,22 @@ def gather(jobs):
     print(f"gathered {len(sigs)} signatures")
 
 
+def fix_globals(src, name):
+    """Globals the retail code reaches with %hi/%lo (not $gp) are bigger than the small-data
+    threshold (8 bytes); MWCC would use $gp for a scalar extern, so declare them as arrays
+    and use element 0."""
+    asm = (ROOT / "asm" / "game" / f"{name}.s").read_text()
+    far = set(re.findall(r"%hi\((D_[0-9A-F]{8})\)", asm))
+    for g in far:
+        decl = re.search(rf"^extern ([\w \*]+?) ?\b{g};$", src, re.M)
+        if not decl:
+            continue
+        head, body = src[: decl.start()], src[decl.end():]
+        body = re.sub(rf"\b{g}\b(?!\[)", f"{g}[0]", body)
+        src = head + f"extern {decl[1].strip()} {g}[];" + body
+    return src
+
+
 def clean(src):
     """Generic fixes so m2c output compiles with MWCC; None if it can't be used."""
     if re.search(r"M2C_(ERROR|BITWISE|STRUCT_COPY|LWL|LWR|SWL|SWR|CARRY|OVERFLOW|ACCESS|UNALIGNED|MEMBER)", src):
