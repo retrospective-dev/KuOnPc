@@ -38,7 +38,7 @@ commit. If a single byte differs, the build fails.
 | **All game functions** | 839 / 2,909 | `█████▊░░░░░░░░░░░░░░` 28.8% |
 | **Game code (by size)** | 31 KB / 995 KB | `▋░░░░░░░░░░░░░░░░░░░` 3.1% |
 | Integer functions (phase 1) | 839 / 2,024 | `████████▎░░░░░░░░░░░` 41.5% |
-| Float / VU0 functions (phase 2) | 0 / 885 | `░░░░░░░░░░░░░░░░░░░░` 0% |
+| Float / VU0 functions (phase 2) | 0 / 885 | `░░░░░░░░░░░░░░░░░░░░` 0.0% |
 
 The small functions went first, so the share of code lags behind the function count. Run
 `make progress` for live numbers.
