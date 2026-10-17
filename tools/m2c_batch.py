@@ -431,8 +431,8 @@ def check(name, text):
     return int(m[1]) if m else "compile error"
 
 
-MWCC = [str(ROOT / "tools" / "wibo"), str(ROOT / "tools" / "compilers" / "mwcps2-3.0.3-020716" / "mwccps2.exe"),
-        "-c", "-O4", "-relax_pointers", "-nostdinc", "-Iinclude"]
+MWCC = [str(ROOT / "tools" / "wibo"), str(ROOT / "tools" / "compilers" / "mwcps2-3.0b52-030722" / "mwccps2.exe"),
+        "-c", "-O4,p", "-relax_pointers", "-nostdinc", "-Iinclude"]
 PTR_DECL = re.compile(r"\b[\w]+ \*+(\w+)\s*[;,)=]")
 
 
@@ -489,13 +489,11 @@ def autocast(name, text, rounds=12):
     return None
 
 
-PAD_RULES = ["", "/* mwcc_pad: any */\n", "/* mwcc_pad: off */\n", "/* mwcc_pad: unsteal */\n",
-             "/* mwcc_pad: any unsteal */\n", "/* mwcc_pad: noternary */\n",
-             "/* mwcc_pad: noternary unsteal */\n"]
+PAD_RULES = [""]
 
 
 def check_padded(name, text):
-    """check() with each branch-target padding rule of tools/mwcc_pad.py; best result."""
+    """check() with each variant in PAD_RULES (now just the draft itself); best result."""
     head, _, body = text.partition("\n")
     best = None
     for rule in PAD_RULES:

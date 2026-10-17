@@ -21,10 +21,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ROM = ROOT / "SLES_534.11.rom"
 ELF = ROOT / "build" / "SLES_534.11.elf"
 VRAM = 0x100000
-MWCC_VER = os.environ.get("KUON_MWCC", "mwcps2-3.0.3-020716")
-CFLAGS = ["-c", "-O4", "-relax_pointers", "-nostdinc", "-Iinclude"]
-# KUON_NOPAD=1 skips tools/mwcc_pad.py (branch-target padding)
-# for experiments: KUON_CFLAGS="-O3 -opt nopeephole" replaces -O4
+MWCC_VER = os.environ.get("KUON_MWCC", "mwcps2-3.0b52-030722")
+CFLAGS = ["-c", "-O4,p", "-relax_pointers", "-nostdinc", "-Iinclude"]
+# for experiments: KUON_CFLAGS="-O3 -opt nopeephole" replaces -O4,p
 if os.environ.get("KUON_CFLAGS"):
     CFLAGS = ["-c", *os.environ["KUON_CFLAGS"].split(), "-relax_pointers", "-nostdinc", "-Iinclude"]
 CROSS = "mips-linux-gnu-"
@@ -108,11 +107,6 @@ def main():
     if cc.returncode != 0 or not obj.exists():
         print((cc.stdout + cc.stderr).strip())
         return 2
-    if not os.environ.get("KUON_NOPAD"):
-        pd = run([sys.executable, str(ROOT / "tools" / "mwcc_pad.py"), str(obj), str(obj), str(src)], cwd=ROOT)
-        if pd.returncode != 0:
-            print((pd.stdout + pd.stderr).strip())
-            return 2
 
     addr, twords, ttext = target(name)
     syms = symbols_ld(name)

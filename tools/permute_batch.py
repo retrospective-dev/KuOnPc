@@ -26,15 +26,13 @@ def common_lines():
     return {re.sub(r"\s+", " ", l).strip() for l in pre.splitlines() if l.strip()}
 
 
-def to_repo_style(src, rule, common):
+def to_repo_style(src, common):
     out = []
     for line in src.splitlines():
         if re.sub(r"\s+", " ", line).strip() in common:
             continue
         out.append(line)
     head = '#include "common.h"\n'
-    if rule != "b":
-        head += f"/* mwcc_pad: {rule} */\n"
     return head + "\n" + "\n".join(out).strip() + "\n"
 
 
@@ -43,7 +41,6 @@ def one(name, seconds, common):
     if r.returncode != 0:
         return name, False
     d = ROOT / "build" / "permute" / name
-    rule = re.search(r"mwcc_pad: ([\w ]+?) \*/", (d / "pad_rule.c").read_text())[1]
     for o in d.glob("output-*"):
         subprocess.run(["rm", "-rf", str(o)])
     try:
@@ -52,7 +49,7 @@ def one(name, seconds, common):
     except subprocess.TimeoutExpired:
         pass
     for o in sorted(d.glob("output-0-*")):
-        text = to_repo_style((o / "source.c").read_text(), rule, common)
+        text = to_repo_style((o / "source.c").read_text(), common)
         trial = d / "candidate.c"
         trial.write_text(text)
         v = subprocess.run([PY, "tools/diff.py", "-q", "--file", str(trial), name], cwd=ROOT,

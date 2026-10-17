@@ -68,7 +68,7 @@ real parameter and local names and types.
   literals, float constants and `switch` jump tables can't be written in C yet.
 - Callees are declared with a prototype at the top of the file, named `func_00XXXXXX`.
 
-## Compiler facts (CodeWarrior PS2 3.0.x, `-O4`)
+## Compiler facts (CodeWarrior PS2 3.0b52, `-O4,p`)
 
 - Register moves are `daddu rd, rs, $zero`; m2c reads them as 64-bit, but parameters are `s32`.
 - m2c names parameters by register and omits unused ones (`void f(void *arg1)` really takes two
@@ -81,24 +81,13 @@ real parameter and local names and types.
 
 ## Open matching problems
 
-- `src/wip/func_00150830.c`: `x == 10 || x == 11` returning 1/0. CW emits branch-to-branch
-  (`beq` to a `b` with `li v0,1` in the delay slot); none of the obvious forms reproduce it,
-  with or without padding.
+- `src/wip/`: functions matched under the old 3.0.3 + emulation setup that don't match with
+  3.0b52 `-O4,p`; redo them (the batch tools retry them automatically).
 
-### Branch-target `nop` padding: solved by emulation
+### Compiler identified: CodeWarrior PS2 3.0b52, `-O4,p`
 
-Kuon's CodeWarrior aligns basic-block starts to 8 bytes: a branch target that code also falls
-through into gets a `nop` before it when it would sit at 4 mod 8. None of the CodeWarrior PS2
-releases we have (2.4-001213, 3.0b52, 3.0.1b74, 3.0.3) do this, so `tools/mwcc_pad.py` emulates
-it after compiling: disassemble the object with spimdisasm, insert the nops, reassemble.
-The Makefile and `tools/diff.py` run it on every C object (`KUON_NOPAD=1` turns it off in diff.py).
-
-Not padded (measured over all retail labels):
-- labels right after a branch/jump delay slot (no fall-through);
-- joins of a value-producing `?:`. In the asm: a `b` to the label whose delay slot writes the
-  same register as the last instruction before the label (or `$v0`/`$f0` when that arm ends in
-  a call). By default only unconditional `b` counts. When the default value is set in a
-  conditional branch's delay slot (`c ? x : 0`), put `/* mwcc_pad: any */` in the C file;
-  `/* mwcc_pad: off */` turns padding off for a file. `tools/m2c_batch.py` tries all three.
-- compiler-internal labels in idioms like unsigned-to-float conversion and signed division by a
-  power of two (not handled yet; ~130 labels).
+The build uses `mwcps2-3.0b52-030722` with `-O4,p` (optimise for speed). That combination
+reproduces the original compiler's branch-target padding (8-byte-aligned block starts) and its
+delay-slot filling natively. For a long time the project used 3.0.3 with `-O4` plus an emulation
+pass for both; the flags came from the Mulberry project (github.com/weirdbeardgame/Mulberry),
+which decompiles the US prototype with the same compiler.

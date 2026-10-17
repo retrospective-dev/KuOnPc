@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  MWCC_VER: mwcps2-3.0.3-020716
+  MWCC_VER: mwcps2-3.0b52-030722
   WIBO_VER: "0.7.0"
 
 jobs:

@@ -39,12 +39,10 @@ def score(name, text, tag):
     return int(m[1]) if m else 10**6
 
 
-RULES = ["", "/* mwcc_pad: any */\n", "/* mwcc_pad: unsteal */\n", "/* mwcc_pad: any unsteal */\n",
-         "/* mwcc_pad: noternary */\n", "/* mwcc_pad: noternary unsteal */\n"]
+RULES = [""]
 
 
 def search(name, text):
-    # pick the padding rule (tools/mwcc_pad.py) that fits the draft best, then search types
     if "mwcc_pad:" not in text:
         head, _, body = text.partition("\n")
         cands = [head + "\n" + r + body if r else text for r in RULES]

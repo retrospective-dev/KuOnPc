@@ -5,8 +5,7 @@ usage: tools/permute_setup.py func_XXXXXXXX [draft.c]
        then: python3 tools/permuter_src/permuter.py build/permute/func_XXXXXXXX -j4
 
 The draft defaults to src/wip/<func>.c, then build/m2c/best/<func>.c. The compile script
-runs MWCC and tools/mwcc_pad.py with the padding rule named in the draft, so scores
-match tools/diff.py. Get the permuter with:
+runs MWCC with the same flags as tools/diff.py, so scores match it. Get the permuter with:
     git clone https://github.com/simonlindholm/decomp-permuter tools/permuter_src
 """
 import re
@@ -15,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MWCC = ROOT / "tools" / "compilers" / "mwcps2-3.0.3-020716" / "mwccps2.exe"
+MWCC = ROOT / "tools" / "compilers" / "mwcps2-3.0b52-030722" / "mwccps2.exe"
 
 
 def main():
@@ -26,15 +25,12 @@ def main():
         draft = next(p for p in (ROOT / "src" / "wip" / f"{name}.c",
                                  ROOT / "build" / "m2c" / "best" / f"{name}.c") if p.exists())
     text = draft.read_text()
-    m = re.search(r"/\* mwcc_pad: ([\w ]+?) \*/", text)
-    rule = m[1] if m else "b"
     d = ROOT / "build" / "permute" / name
     d.mkdir(parents=True, exist_ok=True)
     # the permuter parses plain C: expand includes
     pre = subprocess.run(["cpp", "-P", "-nostdinc", f"-I{ROOT / 'include'}", str(draft)],
                          capture_output=True, text=True, check=True).stdout
     (d / "base.c").write_text(pre)
-    (d / "pad_rule.c").write_text(f"/* mwcc_pad: {rule} */\n")
     asm = (ROOT / "asm" / "game" / f"{name}.s").read_text()
     (d / "target.s").write_text(asm)
     subprocess.run(["mips-linux-gnu-as", "-EL", "-march=r5900", "-mabi=eabi", "-G0", "-no-pad-sections",
@@ -43,8 +39,7 @@ def main():
     sh.write_text(f"""#!/bin/bash
 # invoked as: compile.sh input.c -o output.o
 set -e
-{ROOT}/tools/wibo {MWCC} -c -O4 -relax_pointers -nostdinc -I{ROOT}/include "$1" -o "$3"
-{sys.executable} {ROOT}/tools/mwcc_pad.py "$3" "$3" {d}/pad_rule.c
+{ROOT}/tools/wibo {MWCC} -c -O4,p -relax_pointers -nostdinc -I{ROOT}/include "$1" -o "$3"
 """)
     sh.chmod(0o755)
     (d / "settings.toml").write_text(f'func_name = "{name}"\ncompiler_type = "mwcc"\n')

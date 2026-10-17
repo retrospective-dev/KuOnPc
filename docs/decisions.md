@@ -26,3 +26,12 @@ The owner supplied the disc's IOP modules (15 `.IRX` files and `IOPRP280.IMG`). 
 Sony's (`LIBSD`, `MCMAN`/`MCSERV`, `PADMAN`, `SIO2MAN`, `CDVDSTM`, `MODHSYN`/`MODMIDI`/`MODSEIN`,
 `SDRDRV`). All are stripped (empty symbol tables), so they give no names. They're the reference
 for reimplementing the sound system in phase 5.
+
+## 2026-10-17: Compiler switched to 3.0b52 with -O4,p
+
+The Mulberry project builds the US prototype with `mwcps2-3.0b52-030722 -O4,p`. Tested here: that
+combination reproduces the retail branch-target padding and delay-slot filling natively, and
+matches the three test cases the emulation struggled with. 836 of 867 existing matches still match;
+the other 31 moved to `src/wip/` for redoing. `tools/mwcc_pad.py` and the `/* mwcc_pad: */`
+directives are gone. Earlier tests had tried each compiler with `-O4` and each flag with 3.0.3,
+but never 3.0b52 with `,p`.

@@ -16,11 +16,11 @@ LD      := $(CROSS)ld
 OBJCOPY := $(CROSS)objcopy
 PYTHON  := $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-# Compiler identified from the retail binary: CodeWarrior PS2 3.0.x ("MW MIPS C Compiler 2.4.1.01")
-MWCC_VER ?= mwcps2-3.0.3-020716
+# Compiler: CodeWarrior PS2 3.0b52 (front end "MW MIPS C Compiler 2.4.1.01"), -O4,p
+MWCC_VER ?= mwcps2-3.0b52-030722
 WIBO     := tools/wibo
 MWCC     := $(WIBO) tools/compilers/$(MWCC_VER)/mwccps2.exe
-CFLAGS   := -c -O4 -relax_pointers -nostdinc -Iinclude
+CFLAGS   := -c -O4,p -relax_pointers -nostdinc -Iinclude
 
 ASFLAGS := -EL -march=r5900 -mabi=eabi -G0 -no-pad-sections -Iinclude
 LDFLAGS := -EL -T $(BUILD)/kuon.ld -T undefined_syms_auto.txt -T undefined_funcs_auto.txt \
@@ -43,11 +43,9 @@ $(BUILD)/%.o: %.s
 	@mkdir -p $(dir $@)
 	@$(AS) $(ASFLAGS) -o $@ $<
 
-# tools/mwcc_pad.py emulates the original compiler's branch-target alignment (see CONTRIBUTING.md)
-$(BUILD)/src/%.o: src/%.c tools/mwcc_pad.py
+$(BUILD)/src/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(MWCC) $(CFLAGS) $< -o $@
-	@$(PYTHON) tools/mwcc_pad.py $@ $@ $<
 	@$(PYTHON) tools/check_obj.py $@
 
 $(BUILD)/kuon.ld: $(BASENAME).ld game_order.txt $(C_FILES) tools/gen_ld.py

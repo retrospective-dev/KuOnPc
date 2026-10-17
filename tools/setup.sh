@@ -39,7 +39,7 @@ if [ ! -x tools/wibo ]; then
 fi
 
 echo "== Metrowerks CodeWarrior PS2 compiler (via decomp.me's archive)"
-MW=mwcps2-3.0.3-020716
+MW=mwcps2-3.0b52-030722
 if [ ! -f tools/compilers/$MW/mwccps2.exe ]; then
   mkdir -p tools/compilers/$MW
   curl -sSL https://github.com/decompme/compilers/releases/download/compilers/$MW.tar.gz \
