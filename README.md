@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/functions-1110%20%2F%202%2C909-blue" alt="Functions matched">
   <img src="https://img.shields.io/badge/code-7.1%25-orange" alt="Code matched">
   <img src="https://img.shields.io/badge/target-PAL%20SLES--53411%20v1.01-lightgrey" alt="Target">
-  <img src="https://img.shields.io/badge/phase-1%20of%207-yellow" alt="Phase">
+  <img src="https://img.shields.io/badge/phase-2%20of%207-yellow" alt="Phase">
 </p>
 
 ---
@@ -60,9 +60,10 @@ The small functions went first, so the share of code lags behind the function co
 The full plan is in [`SPEC.md`](SPEC.md).
 
 - [x] **Phase 0: Foundation.** Split, matching rebuild, compiler identified, tooling.
-- [ ] **Phase 1: Integer game code.** Every function without floating point in C. *In progress.*
-- [ ] **Phase 2: Floating-point and VU0 code.** The maths-heavy remainder.
-- [ ] **Phase 3: Understanding.** Names, structs, source files, data moved into C.
+- [ ] **Phase 1: Integer game code.** Every function without floating point in C. *In progress, about half done.*
+- [ ] **Phase 2: Floating-point and VU0 code.** The maths-heavy remainder. *In progress, alongside phase 1.*
+- [ ] **Phase 3: Understanding.** Names, structs, source files, data moved into C. *Partly done early: original
+  names, struct layouts and source files come from the prototype; data migration and docs remain.*
 - [ ] **Phase 4: Full matching decompilation.** SDK identified; tag `decomp-1.0`.
 - [ ] **Phase 5: The port.** Renderer, input, audio, file I/O and saves on PC (SDL3).
 - [ ] **Phase 6: PC features.** Widescreen, 60 fps, any resolution, rebinding, settings.
