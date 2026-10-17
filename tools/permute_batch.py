@@ -66,6 +66,7 @@ def main():
     ap.add_argument("--max-diff", type=int, default=6)
     ap.add_argument("--seconds", type=int, default=120)
     ap.add_argument("--jobs", type=int, default=4)
+    ap.add_argument("--skip-tried", action="store_true", help="skip functions with a build/permute/ dir")
     a = ap.parse_args()
     done = {p.stem for p in (ROOT / "src" / "game").glob("*.c")}
     todo = a.funcs
@@ -75,6 +76,8 @@ def main():
             if b.isdigit() and int(b) <= a.max_diff:
                 todo.append(n)
     todo = [n for n in todo if n not in done]
+    if a.skip_tried:
+        todo = [n for n in todo if not (ROOT / "build" / "permute" / n).exists()]
     common = common_lines()
     matched = 0
     with ThreadPoolExecutor(a.jobs) as ex:
