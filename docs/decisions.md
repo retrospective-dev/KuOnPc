@@ -17,3 +17,12 @@ on each unmatched function with a few option sets, rewrites field accesses into 
 structs, and keeps only exact byte matches. A signature context built from m2c's reading of every
 function gives callees the right argument counts. Functions it can't do stay on the hand list.
 Matches that still use `M2C_FIELD` are cleaned up in phase 3.
+
+## 2026-10-17: IOP modules from the disc
+
+The owner supplied the disc's IOP modules (15 `.IRX` files and `IOPRP280.IMG`). They live in
+`disc/irx/` (git-ignored, never committed). FromSoftware's own are `FSSD.IRX`, `FSSDIVAG.IRX`,
+`FSSDSYTH.IRX` and `FSMFSTRM.IRX` (sound driver, voice/ADPCM, synth, streaming); the rest are
+Sony's (`LIBSD`, `MCMAN`/`MCSERV`, `PADMAN`, `SIO2MAN`, `CDVDSTM`, `MODHSYN`/`MODMIDI`/`MODSEIN`,
+`SDRDRV`). All are stripped (empty symbol tables), so they give no names. They're the reference
+for reimplementing the sound system in phase 5.
