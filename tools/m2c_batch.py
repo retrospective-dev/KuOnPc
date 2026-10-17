@@ -550,6 +550,7 @@ def main():
     ap.add_argument("--bucket")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--allow-float", action="store_true")
+    ap.add_argument("--only-float", action="store_true", help="only FPU/VU0 functions (phase 2)")
     ap.add_argument("--jobs", type=int, default=4)
     a = ap.parse_args()
     if a.gather or not CTX.exists():
@@ -563,7 +564,9 @@ def main():
         rows = [r for r in rows if r["name"] not in done]
         if a.bucket:
             rows = [r for r in rows if r["bucket"] == a.bucket]
-        if not a.allow_float:
+        if a.only_float:
+            rows = [r for r in rows if r["uses_fpu"] != "0" or r["uses_vu0"] != "0"]
+        elif not a.allow_float:
             rows = [r for r in rows if r["uses_fpu"] == "0" and r["uses_vu0"] == "0"]
         rows.sort(key=lambda r: int(r["instructions"]))
         todo = [r["name"] for r in rows]
