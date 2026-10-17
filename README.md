@@ -1,19 +1,128 @@
-# Kuon decompilation
+<p align="center">
+  <img src="https://i0.wp.com/www.kowabana.net/wp-content/uploads/2020/06/kuonrelease.jpg?fit=800%2C450&ssl=1" alt="Kuon" width="720">
+</p>
 
-A matching decompilation of **Kuon** (FromSoftware, 2004, PlayStation 2), targeting the
-PAL release **SLES-53411 v1.01**. The long-term goal is a native PC port.
+<h1 align="center">KuOnPC</h1>
 
-This repo contains **no game code or data**. You need your own disc.
+<p align="center">
+  <b>A matching decompilation of FromSoftware's <i>Kuon</i> (2004, PlayStation 2), on the road to a native PC port.</b>
+</p>
 
-## Status
+<p align="center">
+  <a href="https://github.com/retrospective-dev/KuOnPc/actions/workflows/build.yml"><img src="https://github.com/retrospective-dev/KuOnPc/actions/workflows/build.yml/badge.svg?branch=main" alt="Build"></a>
+  <img src="https://img.shields.io/badge/functions-839%20%2F%202%2C909-blue" alt="Functions matched">
+  <img src="https://img.shields.io/badge/code-3.1%25-orange" alt="Code matched">
+  <img src="https://img.shields.io/badge/target-PAL%20SLES--53411%20v1.01-lightgrey" alt="Target">
+  <img src="https://img.shields.io/badge/phase-1%20of%207-yellow" alt="Phase">
+</p>
+
+---
+
+## About
+
+*Kuon* is FromSoftware's 2004 survival horror game set in Heian-era Japan, released only on the
+PlayStation 2. This project rebuilds its executable from C source, byte for byte, as the
+foundation for a native **Windows and Linux** version that runs without an emulator.
+
+> [!IMPORTANT]
+> This repository contains **no game code, assets or Sony/FromSoftware files**. You need your own
+> copy of the PAL disc (SLES-53411) to build anything.
+
+## Progress
+
+Every matched function is compiled from C and checked against the retail executable on every
+commit. If a single byte differs, the build fails.
+
+| | Matched | |
+|---|---|---|
+| **All game functions** | 839 / 2,909 | `█████▊░░░░░░░░░░░░░░` 28.8% |
+| **Game code (by size)** | 31 KB / 995 KB | `▋░░░░░░░░░░░░░░░░░░░` 3.1% |
+| Integer functions (phase 1) | 839 / 2,024 | `████████▎░░░░░░░░░░░` 41.5% |
+| Float / VU0 functions (phase 2) | 0 / 885 | `░░░░░░░░░░░░░░░░░░░░` 0% |
+
+The small functions went first, so the share of code lags behind the function count. Run
+`make progress` for live numbers.
+
+## Roadmap
+
+The full plan is in [`SPEC.md`](SPEC.md).
+
+- [x] **Phase 0: Foundation.** Split, matching rebuild, compiler identified, tooling.
+- [ ] **Phase 1: Integer game code.** Every function without floating point in C. *In progress.*
+- [ ] **Phase 2: Floating-point and VU0 code.** The maths-heavy remainder.
+- [ ] **Phase 3: Understanding.** Names, structs, source files, data moved into C.
+- [ ] **Phase 4: Full matching decompilation.** SDK identified; tag `decomp-1.0`.
+- [ ] **Phase 5: The port.** Renderer, input, audio, file I/O and saves on PC (SDL3).
+- [ ] **Phase 6: PC features.** Widescreen, 60 fps, any resolution, rebinding, settings.
+- [ ] **Phase 7: Release.** Asset extractor and player docs: ISO to playing in five minutes.
+
+### Planned PC features
 
 | | |
 |---|---|
-| Build | Rebuilds `SLES_534.11` byte-for-byte from source + disassembly |
-| Compiler | Metrowerks CodeWarrior PS2 3.0.x, `-O4`, identified and verified |
-| Game functions | 433 / 2,909 matched in C (14.9% of functions, 0.7% of code bytes: the trivial ones so far) |
+| 🖥️ **Display** | Any resolution up to 4K, 16:9 / 21:9 with correct FOV and HUD, 4:3 option, windowed / borderless / fullscreen |
+| 🎞️ **Frame rate** | 60 fps or more with the original 50 Hz game speed |
+| 🎮 **Input** | XInput / SDL controllers, keyboard and mouse, rebindable |
+| 🔊 **Audio** | Original music, sound and voice, with volume sliders |
+| 💾 **Saves** | Memory card replaced by save files in your user folder |
+| 🌐 **Languages** | English, French and German from the PAL disc |
+| 🎬 **Movies** | Original cutscenes, in game |
 
-Run `make progress` for current numbers.
+Everything defaults to the original experience; enhancements can be turned off.
+
+## Building
+
+Linux or WSL (Ubuntu/Debian).
+
+1. Copy `SLES_534.11` from your PAL disc into `original/`
+   (sha1 `bd495fc0bb5b905b2459ac2441622d19c33bad42`).
+2. Run `bash tools/setup.sh`.
+
+That installs MIPS binutils, splat and m2c, downloads `wibo` and the CodeWarrior compiler,
+splits the executable, builds it and checks the result. Then:
+
+```sh
+source .venv/bin/activate   # once per shell
+make -j4                    # must print: OK: build matches retail SLES_534.11
+make progress
+```
+
+### GitHub Actions
+
+[`build.yml`](.github/workflows/build.yml) builds and verifies every push and pull request, and
+can be started by hand from the Actions tab. It publishes only the linker map and the function
+list, never executables. CI uses `original/SLES_534.11` if present, otherwise it downloads the file
+from the URL in the `KUON_ELF_URL` repository secret.
+
+## Contributing
+
+```sh
+python3 tools/todo.py --bucket small     # easiest unmatched functions
+python3 tools/diff.py func_0014A670      # compile one function and diff it against retail
+python3 tools/m2c_batch.py --bucket tiny # draft functions automatically, keep exact matches
+```
+
+Matching rules, compiler quirks and the agent workflow are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Design
+decisions are logged in [`docs/decisions.md`](docs/decisions.md).
+
+### Tooling
+
+| Tool | What it does |
+|---|---|
+| `tools/diff.py` | Compiles one function, links it at its retail address and diffs the bytes |
+| `tools/m2c_batch.py` | Drafts unmatched functions with m2c, cleans them up for CodeWarrior, keeps exact matches |
+| `tools/typefix.py` | Searches integer types in near-miss drafts |
+| `tools/permute_batch.py` | Runs [decomp-permuter](https://github.com/simonlindholm/decomp-permuter) on near misses |
+| `tools/mwcc_pad.py` | Reproduces the original compiler's branch-target alignment (see `CONTRIBUTING.md`) |
+| `tools/todo.py` | Work queue, easiest first |
+
+## Technical notes
+
+| | |
+|---|---|
+| **Target** | PAL `SLES_534.11` v1.01, Kuon (SLES-53411) |
+| **Compiler** | Metrowerks CodeWarrior for PS2, front end "MW MIPS C Compiler 2.4.1.01", `-O4`. The exact build isn't available, so its branch-target padding is emulated |
+| **SDK** | Sony PS2 SDK 2.8.0 |
 
 ### What's in the executable
 
@@ -29,68 +138,23 @@ Run `make progress` for current numbers.
 IOP modules loaded from disc include FromSoftware's own sound drivers (`fssd.irx`,
 `fssdivag.irx`, `fssdsyth.irx`, `fsmfstrm.irx`). Movies are PSS. Textures are TM2 and `.tex`.
 
-## Setup (Linux or WSL)
-
-1. Copy `SLES_534.11` from your PAL disc into `original/`
-   (sha1 `bd495fc0bb5b905b2459ac2441622d19c33bad42`).
-2. `bash tools/setup.sh`
-
-That installs MIPS binutils and splat, downloads `wibo` and the CodeWarrior compiler,
-splits the executable, builds it, and checks it matches.
-
-### GitHub Actions
-
-`.github/workflows/build.yml` runs the same steps on every push and pull request
-(and on demand from the Actions tab). The job fails if the rebuilt image doesn't match
-retail. The linker map and `docs/functions.csv` are uploaded as the `kuon-map` artifact
-(no executables: they're Sony/FromSoftware code), and the progress numbers show up in the
-run summary.
-
-CI needs the retail executable. It uses `original/SLES_534.11` if present, otherwise it
-downloads it from the URL in the `KUON_ELF_URL` repository secret (a private link you control).
-
-### Testing the output
-
-`make` writes `build/SLES_534.11`: the rebuilt code inside the retail executable's ELF
-headers. While the build matches, it is identical to the file on the disc.
-
-- **PCSX2:** System → Start File, pick `build/SLES_534.11`. The game reads its data from the disc, so keep your Kuon ISO
-  loaded: set it under Settings → Game List or System → Start Disc first.
-- **Replace it in the ISO:** swap `SLES_534.11` in a copy of your ISO with an ISO editor
-  (e.g. ImgBurn / UltraISO) and boot the ISO as usual.
-
-## Working on it
-
-```
-source .venv/bin/activate                # once per shell
-python3 tools/todo.py --bucket tiny      # easiest unmatched functions
-python3 tools/diff.py func_0014A670      # compile + byte-diff one function
-make                                     # full rebuild, must print OK
-make progress
-```
-
-See `SPEC.md` for the project plan and `CONTRIBUTING.md` for the matching rules and agent workflow.
-
-## Layout
+### Layout
 
 ```
 kuon.yaml            splat config (segments, compiler)
 Makefile
-include/common.h     shared types
+include/             shared headers (common.h, m2c_macros.h)
 src/game/            matched functions, one per file (linked into the build)
-src/wip/             near-misses, not linked
-tools/diff.py        per-function compile/link/byte-compare
-tools/todo.py        work queue
-tools/inventory.py   docs/functions.csv (size, float/VU0 use, string hints)
-tools/split_game.py  per-function asm split
-tools/gen_ld.py      linker script choosing C over asm per function
+src/wip/             near misses, not linked
+tools/               build, diff and matching tools
+docs/                decisions log, function inventory (generated)
+SPEC.md              project plan
+CONTRIBUTING.md            matching rules and workflow
 ```
 
-## Road to a PC port
+## Legal
 
-1. Decompile game logic (integer code first, then FPU, then VU0 macro code).
-2. Name things: recover structs for the big globals, module boundaries (`SfxMng.c` etc.).
-3. Move data ownership from asm into C (strings, tables, floats).
-4. Replace the platform layer: GS/VIF/VU1 rendering → modern renderer,
-   libpad → SDL input, CD/IOP file I/O → filesystem, FromSoftware sound IRX → PC audio.
-5. Build for x86-64 with a modern compiler once the code no longer depends on PS2 hardware.
+*Kuon* is © FromSoftware. This is an unofficial fan project, not affiliated with or endorsed by
+FromSoftware or Sony Interactive Entertainment. It distributes no copyrighted game code or assets;
+building it requires your own legally obtained copy of the game. The header image is FromSoftware's
+key art, shown by link.
