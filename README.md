@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/retrospective-dev/KuOnPc/actions/workflows/build.yml"><img src="https://github.com/retrospective-dev/KuOnPc/actions/workflows/build.yml/badge.svg?branch=main" alt="Build"></a>
-  <img src="https://img.shields.io/badge/functions-1109%20%2F%202%2C909-blue" alt="Functions matched">
+  <img src="https://img.shields.io/badge/functions-1110%20%2F%202%2C909-blue" alt="Functions matched">
   <img src="https://img.shields.io/badge/code-7.1%25-orange" alt="Code matched">
   <img src="https://img.shields.io/badge/target-PAL%20SLES--53411%20v1.01-lightgrey" alt="Target">
   <img src="https://img.shields.io/badge/phase-1%20of%207-yellow" alt="Phase">
@@ -35,10 +35,10 @@ commit. If a single byte differs, the build fails.
 
 | | Matched | |
 |---|---|---|
-| **All game functions** | 1109 / 2,909 | `███████▋░░░░░░░░░░░░` 38.1% |
+| **All game functions** | 1110 / 2,909 | `███████▋░░░░░░░░░░░░` 38.2% |
 | **Game code (by size)** | 70 KB / 995 KB | `█▍░░░░░░░░░░░░░░░░░░` 7.1% |
 | Integer functions (phase 1) | 1009 / 2,024 | `██████████░░░░░░░░░░` 49.9% |
-| Float / VU0 functions (phase 2) | 100 / 885 | `██▎░░░░░░░░░░░░░░░░░` 11.3% |
+| Float / VU0 functions (phase 2) | 101 / 885 | `██▎░░░░░░░░░░░░░░░░░` 11.4% |
 
 The small functions went first, so the share of code lags behind the function count. Run
 `make progress` for live numbers.
