@@ -53,26 +53,24 @@ ROM/ELF outputs or the compiler (see `.gitignore`).
 
 ## Open matching problems
 
-### Branch-target `nop` padding (blocks ~620 functions)
-
-In the retail code, about 91% of branch targets sit on 8-byte-aligned addresses, often with a
-`nop` inserted before the target to get there, e.g. the end of an `if` body before the epilogue:
-
-```
-sw   $v1, %gp_rel(D_0025E31C)($gp)
-nop                         <- padding; our compile has no nop here
-.L0013A4F8:
-ld   $ra, 0x0($sp)
-```
-
-622 functions have a `nop` right before an `ld $ra` branch target; none match yet. Targets of an
-unconditional `b` are often *not* aligned. Already ruled out (2026-10-16, test case
-`func_0013A4C0`): compilers mwcps2 2.4-001213, 3.0b52-030722, 3.0.1b74-030811, 3.0.3-020716;
-flags -O0..-O4 with `,p`/`,s`, `-g`, `-opt nopeep`, `-inline off`, C++ mode; source forms
-(goto/early return/else/do-while/switch/inline helpers). Not tried yet: getting `-S` assembly
-output (the driver needs `mwldps2.exe` on its path) to see whether the compiler marks labels for
-alignment, and later CodeWarrior PS2 releases (3.5+, 2003-2004) that decomp.me doesn't have.
-`tools/diff.py` takes `KUON_MWCC=<compiler dir>` and `KUON_CFLAGS="..."` for such experiments.
-
 - `src/wip/func_00150830.c`: `x == 10 || x == 11` returning 1/0. CW emits branch-to-branch
-  (`beq` to a `b` with `li v0,1` in the delay slot); none of the obvious forms reproduce it.
+  (`beq` to a `b` with `li v0,1` in the delay slot); none of the obvious forms reproduce it,
+  with or without padding.
+
+### Branch-target `nop` padding: solved by emulation
+
+Kuon's CodeWarrior aligns basic-block starts to 8 bytes: a branch target that code also falls
+through into gets a `nop` before it when it would sit at 4 mod 8. None of the CodeWarrior PS2
+releases we have (2.4-001213, 3.0b52, 3.0.1b74, 3.0.3) do this, so `tools/mwcc_pad.py` emulates
+it after compiling: disassemble the object with spimdisasm, insert the nops, reassemble.
+The Makefile and `tools/diff.py` run it on every C object (`KUON_NOPAD=1` turns it off in diff.py).
+
+Not padded (measured over all retail labels):
+- labels right after a branch/jump delay slot (no fall-through);
+- joins of a value-producing `?:`. In the asm: a `b` to the label whose delay slot writes the
+  same register as the last instruction before the label (or `$v0`/`$f0` when that arm ends in
+  a call). By default only unconditional `b` counts. When the default value is set in a
+  conditional branch's delay slot (`c ? x : 0`), put `/* mwcc_pad: any */` in the C file;
+  `/* mwcc_pad: off */` turns padding off for a file. `tools/m2c_batch.py` tries all three.
+- compiler-internal labels in idioms like unsigned-to-float conversion and signed division by a
+  power of two (not handled yet; ~130 labels).
