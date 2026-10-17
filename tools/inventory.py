@@ -43,6 +43,9 @@ def bucket(n):
 
 def main():
     order = (ROOT / "game_order.txt").read_text().split()
+    # data symbols are D_XXXXXXXX or named in symbol_addrs.txt
+    sym_addr = {n: int(v, 16) for n, v in re.findall(r"^(\w+) = (0x[0-9A-Fa-f]+);(?! // type:func)",
+                                                     (ROOT / "symbol_addrs.txt").read_text(), re.M)}
     rows = []
     for name in order:
         text = (ROOT / "asm" / "game" / f"{name}.s").read_text()
@@ -57,7 +60,11 @@ def main():
         addr = int(instrs[0][0], 16) if instrs else 0
         strings = []
         for m in re.finditer(r"%lo\(([A-Za-z_]\w*)\)", text):
-            s = cstr(int(m.group(1)[2:], 16))
+            n = m.group(1)
+            a = int(n[2:], 16) if re.fullmatch(r"D_[0-9A-F]{8}", n) else sym_addr.get(n)
+            if a is None:
+                continue
+            s = cstr(a)
             if s and s not in strings:
                 strings.append(s)
         idents = [s for s in strings if IDENT.match(s)]
